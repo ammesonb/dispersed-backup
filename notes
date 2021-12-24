@@ -1,0 +1,21 @@
+- Logs as modal, filterable by level, timestamps etc
+    - By worker, if possible
+- UI has completed, in progress, pending sections (with pretty animated icons)
+- Completed section can be cleared
+- Multi-select option? for actions
+- Rearrange using grab bar, maybe support touch actions?
+- Need an options section
+- Show hard drive fill percents
+- Report progress natively, showing via filling a bar in the "In Progress" section
+    - How to do, if disk operations are shifted to separate processes?
+    - Local UDP socket, per-worker?
+- Dedicated channels for logging, device availability, etc
+    - Buffered to 100 or something large, to avoid issues with changes in thread/worker counts
+- How to update disk availability after each write (check availability only decreased by file size, not file size + 4k for block alignment etc)?
+    - May not be possible since other writes will almost certainly be in progress
+    - If nothing in progress, can re-check availability - use tick, check "in progress" set
+
+- When command added, main thread owns it ("pending" queue)
+- When passed off, worker owns it ("in progress" queue)
+    - Communicated back to main thread using a status update
+- Upon completion, ownership passed back to main thread ("completed" queue)
