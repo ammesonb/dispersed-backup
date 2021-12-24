@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
-	"github.com/ammesonb/dispersed-backup/db"
+	"github.com/ammesonb/dispersed-backup/mydb"
 )
 
 func main() {
 	dbPath := flag.String("db", "/var/lib/dispersed-backup/metadata.db", "Path to database file")
-	_ = db.OpenDB(*dbPath)
+	_ = mydb.OpenDB(*dbPath)
 }

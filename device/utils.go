@@ -8,6 +8,7 @@ import (
 
 // Device represents a mount point on the system that can be used for backing up files
 type Device struct {
+	DeviceID       int
 	MountPoint     string
 	DeviceSerial   string
 	AvailableSpace uint64
@@ -17,6 +18,7 @@ type Device struct {
 // Reserves the requested space on the device, returning a new device
 func reserveSpace(dev Device, needed uint64) Device { //nolint
 	return Device{
+		dev.DeviceID,
 		dev.MountPoint,
 		dev.DeviceSerial,
 		dev.AvailableSpace,
@@ -24,8 +26,8 @@ func reserveSpace(dev Device, needed uint64) Device { //nolint
 	}
 }
 
-// Creates a device based on the path, failing if it is not a mountpoint
-func getDevice(path string) (Device, error) { //nolint
+// MakeDevice creates a device based on the provided path and optional serial
+func MakeDevice(devID int, path string, serial string) (Device, error) {
 	parts, err := disk.Partitions(false)
 	if err != nil {
 		panic(err)
@@ -38,9 +40,14 @@ func getDevice(path string) (Device, error) { //nolint
 				panic(err)
 			}
 
+			if serial == "" {
+				serial = disk.GetDiskSerialNumber(part.Device)
+			}
+
 			return Device{
+				devID,
 				path,
-				disk.GetDiskSerialNumber(part.Device),
+				serial,
 				usage.Free,
 				0,
 			}, nil
