@@ -1,6 +1,17 @@
-FROM golang:cross
+FROM golang:1.16-alpine
 
-# The golang Docker sets the $GOPATH to be /go
-# https://github.com/docker-library/golang/blob/c1baf037d71331eb0b8d4c70cff4c29cf124c5e0/1.4/Dockerfile
-RUN mkdir -p /go/src/github.com/ammesonb/dispersed-backup
 WORKDIR /go/src/github.com/ammesonb/dispersed-backup
+COPY go.mod ./
+COPY go.sum ./
+
+RUN go mod download
+
+RUN apk add build-base
+
+RUN go install golang.org/x/tools/cmd/goimports@latest
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+RUN go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+RUN go install github.com/go-critic/go-critic/cmd/gocritic@latest
+RUN go install golang.org/x/lint/golint@latest
+
+RUN go get github.com/mattn/go-sqlite3

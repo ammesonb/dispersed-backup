@@ -2,10 +2,11 @@ package device
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/shirou/gopsutil/disk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestReserveSpace(t *testing.T) {

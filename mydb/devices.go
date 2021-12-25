@@ -3,6 +3,7 @@ package mydb
 import (
 	"database/sql"
 	"fmt"
+
 	"github.com/ammesonb/dispersed-backup/device"
 )
 

@@ -1,20 +1,21 @@
-#!/bin/bash
-echo "Getting dependencies...."
-go get -t
-if [ $? -ne 0 ]; then
-  echo "Failed to install dependencies!"
-  exit 1
-fi
-echo "Running command"
+#!/bin/sh
+echo "Running command "${1}""
 
-if [ "${1}" = "ci" ]; then
+if [ "${1}" = "test" ]; then
   go test -v ./...
 elif [ "${1}" = "lint" ]; then
-  goimports
+  echo "Imports"
+  goimports -l .
+  echo "Formatting"
   go fmt
+  echo "Vetting"
   go vet
+  echo "Linting"
   golint
-  golangci-lint
+  echo "CI Lint"
+  golangci-lint run
+  echo "Critique"
   gocritic check
-  gocyclo -over 15
+  echo "Cycles"
+  gocyclo -over 15 .
 fi

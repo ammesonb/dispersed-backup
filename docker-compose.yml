@@ -1,24 +1,44 @@
-ci: &ci
+dev: &dev
   build: .
   volumes:
     - ./:/go/src/github.com/ammesonb/dispersed-backup
-    - /usr/bin/buildkite-agent:/usr/bin/buildkite-agent
   environment:
     - BUILDKITE_AGENT_ACCESS_TOKEN
     - BUILDKITE_JOB_ID
     - BUILDKITE_BUILD_ID
     - BUILDKITE_BUILD_NUMBER
-    - GOROOT=/usr/src/go/
     - GOPATH=/go/
+  working_dir: /go/src/github.com/ammesonb/dispersed-backup
+
+ci: &ci
+  <<: *dev
+  volumes:
+    - /usr/bin/buildkite-agent:/usr/bin/buildkite-agent
+
 
 lint:
+  <<: *dev
+  command: "scripts/test.sh lint"
+
+lint-ci:
+  <<: *dev
   <<: *ci
   command: "scripts/test.sh lint"
 
 test:
+  <<: *dev
+  command: "scripts/test.sh test"
+
+test-ci:
+  <<: *dev
   <<: *ci
   command: "scripts/test.sh test"
 
 build:
+  <<: *dev
+  command: "go build"
+
+build-ci:
+  <<: *dev
   <<: *ci
   command: "go build"
