@@ -1,14 +1,12 @@
 agent:
   queue: default
 
-steps:
-  - command: "make lint"
-    label: ":golangci-lint:"
+- name: ":golangci-lint:"
+  plugins:
+    - docker-compose#v3.0.3:
+        run: lint
 
-  - command: "make test"
-    label: ":go: :test_tube:"
-
-  - wait
-
-  - command: "make build"
-    label: ":golang: :house_buildings:"
+- name: ":go: :test_tube:"
+  plugins:
+    - docker-compose#v3.0.3:
+        run: test
