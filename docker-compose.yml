@@ -18,7 +18,7 @@ ci: &ci
 
 lint: &lint
   <<: *dev
-  command: "ls .; scripts/entry.sh lint"
+  command: ["scripts/entry.sh", "lint"]
 
 lint-ci:
   <<: *ci
@@ -26,7 +26,7 @@ lint-ci:
 
 test: &test
   <<: *dev
-  command: "scripts/entry.sh test"
+  command: ["scripts/entry.sh", "test"]
 
 test-ci:
   <<: *ci
@@ -34,7 +34,7 @@ test-ci:
 
 build: &build
   <<: *dev
-  command: "go build"
+  command: ["go", "build"]
 
 build-ci:
   <<: *ci
