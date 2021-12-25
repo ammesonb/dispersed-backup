@@ -24,7 +24,7 @@ lint:
 lint-ci:
   <<: *dev
   <<: *ci
-  command: "$PROJECT_DIR/test.sh lint"
+  command: "$$PROJECT_DIR/test.sh lint"
 
 test:
   <<: *dev
@@ -33,7 +33,7 @@ test:
 test-ci:
   <<: *dev
   <<: *ci
-  command: "$PROJECT_DIR/test.sh test"
+  command: "$$PROJECT_DIR/test.sh test"
 
 build:
   <<: *dev
