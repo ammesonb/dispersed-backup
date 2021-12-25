@@ -1,12 +1,13 @@
 agents:
   queue: default
 
-- name: ":golangci-lint:"
-  plugins:
-    - docker-compose#v3.0.3:
-        run: lint
+steps:
+  - name: ":golangci-lint:"
+    plugins:
+      - docker-compose#v3.0.3:
+          run: lint
 
-- name: ":go: :test_tube:"
-  plugins:
-    - docker-compose#v3.0.3:
-        run: test
+  - name: ":go: :test_tube:"
+    plugins:
+      - docker-compose#v3.0.3:
+          run: test
