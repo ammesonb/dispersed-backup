@@ -3,6 +3,7 @@ on: push
 jobs:
   trigger-pipeline:
     name: Trigger BuildKiet pipeline
+    runs-on: ubuntu-latest
     steps:
       - name: Create BuildKite pipeline
         uses: "buildkite/trigger-pipeline-action@v1.2.0"
