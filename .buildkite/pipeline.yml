@@ -3,11 +3,13 @@ agents:
 
 steps:
   - name: ":golangci-lint:"
+    command: lint-ci
     plugins:
       - docker-compose#v3.0.3:
           run: lint-ci
 
   - name: ":go: :test_tube:"
+    command: test-ci
     plugins:
       - docker-compose#v3.0.3:
           run: test-ci

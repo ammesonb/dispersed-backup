@@ -14,6 +14,7 @@ ci: &ci
   <<: *dev
   volumes:
     - /usr/bin/buildkite-agent:/usr/bin/buildkite-agent
+  entrypoint: "scripts/entry.sh"
 
 
 lint: &lint
@@ -21,17 +22,16 @@ lint: &lint
   command: ["scripts/entry.sh", "lint"]
 
 lint-ci:
-  <<: *ci
   <<: *lint
-  command: ["echo", "$PWD"]
+  <<: *ci
 
 test: &test
   <<: *dev
   command: ["scripts/entry.sh", "test"]
 
 test-ci:
-  <<: *ci
   <<: *test
+  <<: *ci
 
 build: &build
   <<: *dev
