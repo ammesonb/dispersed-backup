@@ -1,4 +1,4 @@
-agent:
+agents:
   queue: default
 
 - name: ":golangci-lint:"
