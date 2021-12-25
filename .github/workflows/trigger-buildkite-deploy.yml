@@ -1,14 +1,9 @@
-workflow "Trigger a Buildkite Build" {
-  on = "push"
-  resolves = ["Build"]
-}
-
-action "Build" {
-  uses = "buildkite/trigger-pipeline-action@v1.2.0"
-  secrets = ["BUILDKITE_API_ACCESS_TOKEN"]
-  env = {
-    PIPELINE = "ammesonb/dispersed-backup"
-    COMMIT = "HEAD"
-  }
-}
-
+name: BuildKite
+on: push
+steps:
+  - name: Trigger BuildKite pipeline
+    uses: "buildkite/trigger-pipeline-action@v1.2.0"
+    env:
+      BUILDKITE_API_ACCESS_TOKEN: ${{ secrets.BUILDKITE_API_ACCESS_TOKEN }}
+      PIPELINE: "ammesonb/dispersed-backup"
+      COMMIT: "HEAD"
