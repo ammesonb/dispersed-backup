@@ -23,7 +23,7 @@ lint: &lint
 lint-ci:
   <<: *ci
   <<: *lint
-  command: ["ls", "./"]
+  command: ["echo", "hello world"]
 
 test: &test
   <<: *dev
