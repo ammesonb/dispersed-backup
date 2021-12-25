@@ -8,6 +8,8 @@ ci: &ci
     - BUILDKITE_JOB_ID
     - BUILDKITE_BUILD_ID
     - BUILDKITE_BUILD_NUMBER
+    - GOROOT=/usr/src/go/
+    - GOPATH=/go
 
 lint:
   <<: *ci

@@ -1,5 +1,11 @@
 #!/bin/bash
+echo "Getting dependencies...."
+echo $(which go)
+echo $GOROOT
+echo $GOPATH
+echo $(ls /usr/src/go/)
 go get -t
+echo "Running command"
 
 if [ "${1}" = "ci" ]; then
   go test -v ./...
