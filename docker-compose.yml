@@ -1,5 +1,5 @@
 dev: &dev
-  build: .
+  image: dispersed-backup_dev
   volumes:
     - ./:/go/src/github.com/ammesonb/dispersed-backup
   environment:
@@ -14,11 +14,11 @@ ci: &ci
   <<: *dev
   volumes:
     - /usr/bin/buildkite-agent:/usr/bin/buildkite-agent
-  entrypoint: "scripts/entry.sh"
 
 
 lint: &lint
   <<: *dev
+  image: dispersed-backup_lint
   command: ["scripts/entry.sh", "lint"]
 
 lint-ci:
@@ -27,6 +27,7 @@ lint-ci:
 
 test: &test
   <<: *dev
+  image: dispersed-backup_test
   command: ["scripts/entry.sh", "test"]
 
 test-ci:
