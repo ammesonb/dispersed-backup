@@ -23,7 +23,7 @@ lint: &lint
 lint-ci:
   <<: *ci
   <<: *lint
-  command: ["echo", "hello world"]
+  command: ["echo", "$PWD"]
 
 test: &test
   <<: *dev
