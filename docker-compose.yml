@@ -8,6 +8,7 @@ dev: &dev
     - BUILDKITE_BUILD_ID
     - BUILDKITE_BUILD_NUMBER
     - GOPATH=/go/
+    - PROJECT_DIR=/go/src/github.com/ammesonb/dispersed-backup
   working_dir: /go/src/github.com/ammesonb/dispersed-backup
 
 ci: &ci
@@ -23,7 +24,7 @@ lint:
 lint-ci:
   <<: *dev
   <<: *ci
-  command: "scripts/test.sh lint"
+  command: "$PROJECT_DIR/test.sh lint"
 
 test:
   <<: *dev
@@ -32,7 +33,7 @@ test:
 test-ci:
   <<: *dev
   <<: *ci
-  command: "scripts/test.sh test"
+  command: "$PROJECT_DIR/test.sh test"
 
 build:
   <<: *dev
