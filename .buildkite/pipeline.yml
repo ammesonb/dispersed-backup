@@ -1,0 +1,14 @@
+agent:
+  queue: default
+
+steps:
+  - command: "make lint"
+    label: ":golangci-lint:"
+
+  - command: "make test"
+    label: ":go: :test_tube:"
+
+  - wait
+
+  - command: "make build"
+    label: ":golang: :house_buildings:"
