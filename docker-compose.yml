@@ -16,29 +16,26 @@ ci: &ci
     - /usr/bin/buildkite-agent:/usr/bin/buildkite-agent
 
 
-lint:
+lint: &lint
   <<: *dev
-  command: "scripts/test.sh lint"
+  command: "ls .; scripts/entry.sh lint"
 
 lint-ci:
-  <<: *dev
   <<: *ci
-  command: "/go/src/github.com/ammesonb/dispersed-backup/scripts/test.sh lint"
+  <<: *lint
 
-test:
+test: &test
   <<: *dev
-  command: "scripts/test.sh test"
+  command: "scripts/entry.sh test"
 
 test-ci:
-  <<: *dev
   <<: *ci
-  command: "/go/src/github.com/ammesonb/dispersed-backup/scripts/test.sh test"
+  <<: *test
 
-build:
+build: &build
   <<: *dev
   command: "go build"
 
 build-ci:
-  <<: *dev
   <<: *ci
-  command: "go build"
+  <<: *build
