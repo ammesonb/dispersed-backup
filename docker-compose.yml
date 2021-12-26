@@ -39,7 +39,3 @@ test-ci:
 build: &build
   <<: *dev
   command: ["go", "build"]
-
-build-ci:
-  <<: *ci
-  <<: *build
