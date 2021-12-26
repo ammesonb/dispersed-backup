@@ -7,6 +7,9 @@ steps:
 
   - wait
 
+  - name: "File check"
+    command: "ls"
+
   - name: ":golangci-lint:"
     plugins:
       - docker-compose#v3.0.3:
