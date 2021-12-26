@@ -23,6 +23,7 @@ lint-ci:
   volumes:
     - ./:/go/src/github.com/ammesonb/dispersed-backup
     - /usr/bin/buildkite-agent:/usr/bin/buildkite-agent
+  command: "ls"
 
 test: &test
   <<: *dev
