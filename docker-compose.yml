@@ -24,7 +24,7 @@ ci: &ci
 
 lint: &lint
   <<: *dev
-  command: ["sh", "-c", "'./scripts/entry.sh lint'"]
+  command: ["sh", "-c", "./scripts/entry.sh", "lint"]
 
 lint-ci:
   image: dispersed-backup_dev
@@ -43,7 +43,7 @@ lint-ci:
 
 test: &test
   <<: *dev
-  command: ["sh", "-c", "'./scripts/entry.sh test'"]
+  command: ["sh", "-c", "./scripts/entry.sh", "test"]
 
 test-ci:
   image: dispersed-backup_dev
