@@ -24,7 +24,7 @@ ci: &ci
 
 lint: &lint
   <<: *dev
-  command: ["scripts/entry.sh", "lint"]
+  command: ["sh", "-c", "'./scripts/entry.sh lint'"]
 
 lint-ci:
   image: dispersed-backup_dev
@@ -40,11 +40,10 @@ lint-ci:
     - BUILDKITE_BUILD_NUMBER
     - GOPATH=/go/
   working_dir: /go/src/github.com/ammesonb/dispersed-backup
-  command: ["scripts/entry.sh", "lint"]
 
 test: &test
   <<: *dev
-  command: ["scripts/entry.sh", "test"]
+  command: ["sh", "-c", "'./scripts/entry.sh test'"]
 
 test-ci:
   image: dispersed-backup_dev
