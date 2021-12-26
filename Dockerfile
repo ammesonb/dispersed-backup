@@ -15,6 +15,3 @@ RUN go install github.com/go-critic/go-critic/cmd/gocritic@latest
 RUN go install golang.org/x/lint/golint@latest
 
 RUN go get github.com/mattn/go-sqlite3
-
-# This really ought to be a volume but seems like buildkite isn't mounting them right
-COPY . /go/src/github.com/ammesonb/dispersed-backup
