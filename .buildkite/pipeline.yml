@@ -11,6 +11,10 @@ steps:
     plugins:
       - docker-compose#v3.0.3:
           run: lint-ci
+          volumes:
+            - "./:/go/src/github.com/ammesonb/dispersed-backup"
+            - "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
+
 
   - name: ":go: :test_tube:"
     plugins:
