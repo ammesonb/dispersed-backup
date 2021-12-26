@@ -10,10 +10,6 @@ dev: &dev
     - GOPATH=/go/
   working_dir: /go/src/github.com/ammesonb/dispersed-backup
 
-ci: &ci
-  <<: *dev
-  volumes:
-    - /usr/bin/buildkite-agent:/usr/bin/buildkite-agent
 
 
 lint: &lint
@@ -23,10 +19,10 @@ lint: &lint
 lint-ci:
   image: dispersed-backup_dev
   <<: *lint
-  <<: *ci
-  # Seems like volumes aren't inherited?
+  # Volumes cannot be added to using inheritance, so explicitly set them here
   volumes:
     - ./:/go/src/github.com/ammesonb/dispersed-backup
+    - /usr/bin/buildkite-agent:/usr/bin/buildkite-agent
 
 test: &test
   <<: *dev
@@ -35,10 +31,10 @@ test: &test
 test-ci:
   image: dispersed-backup_dev
   <<: *test
-  <<: *ci
-  # Seems like volumes aren't inherited?
+  # Volumes cannot be added to using inheritance, so explicitly set them here
   volumes:
     - ./:/go/src/github.com/ammesonb/dispersed-backup
+    - /usr/bin/buildkite-agent:/usr/bin/buildkite-agent
 
 build: &build
   <<: *dev
