@@ -29,6 +29,7 @@ lint: &lint
 lint-ci:
   <<: *lint
   <<: *ci
+  command: ["sleep", "120"]
 
 test: &test
   <<: *dev
