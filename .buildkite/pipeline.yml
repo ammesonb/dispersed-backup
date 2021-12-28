@@ -10,15 +10,15 @@ steps:
   - name: ":golangci-lint: Linting"
     plugins:
       - docker-compose#v3.0.3:
-        run: lint-ci
-        volumes:
-          - "${BUILDKITE_BUILD_CHECKOUT_PATH}/${BUILDKITE_AGENT_ID}-1/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
-          - "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
+          run: lint-ci
+          volumes:
+            - "${BUILDKITE_BUILD_CHECKOUT_PATH}/${BUILDKITE_AGENT_ID}-1/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
+            - "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
 
   - name: ":go: :test_tube: Unit Tests"
     plugins:
       - docker-compose#v3.0.3:
-        run: test-ci
-        volumes:
-          - "${BUILDKITE_BUILD_CHECKOUT_PATH}/${BUILDKITE_AGENT_ID}-1/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
-          - "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
+          run: test-ci
+          volumes:
+            - "${BUILDKITE_BUILD_CHECKOUT_PATH}/${BUILDKITE_AGENT_ID}-1/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
+            - "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
