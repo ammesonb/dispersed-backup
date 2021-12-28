@@ -10,7 +10,7 @@ dev: &dev
 ci: &ci
   image: dispersed-backup_dev
   # This will overwrite the dev volumes, so include both
-  volumes:
+  #volumes:
     #- "${BUILDKITE_BUILD_CHECKOUT_PATH}/${BUILDKITE_AGENT_ID}-1/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
     #- "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
   environment:
