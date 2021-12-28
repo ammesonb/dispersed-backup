@@ -14,7 +14,7 @@ steps:
           volumes:
             # This is mounted relative to the HOST since docker commands are passed through, so
             # need to reference THAT path not the one inside the buildkite agent
-            - "${BUILDKITE_BUILD_PATH}/${HOSTNAME}-1/ammesonb/dispersed-backup/${BUILDKITE_AGENT_ID}/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
+            - "${BUILDKITE_BUILD_CHECKOUT_PATH}:/go/src/github.com/ammesonb/dispersed-backup"
             - "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
 
   - name: ":go: :test_tube: Unit Tests"
@@ -22,5 +22,5 @@ steps:
       - docker-compose#v3.0.3:
           run: test-ci
           volumes:
-            - "${BUILDKITE_BUILD_PATH}/${HOSTNAME}-1/ammesonb/dispersed-backup/${BUILDKITE_AGENT_ID}/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
+            - "${BUILDKITE_BUILD_CHECKOUT_PATH}:/go/src/github.com/ammesonb/dispersed-backup"
             - "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
