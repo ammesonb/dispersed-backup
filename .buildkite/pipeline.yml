@@ -12,7 +12,7 @@ steps:
       - docker-compose#v3.0.3:
           run: lint-ci
           volumes:
-            - "${BUILDKITE_BUILD_PATH}/${BUILDKITE_AGENT_ID}-1/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
+            - "${BUILDKITE_BUILD_PATH}/${HOSTNAME}-1/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
             - "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
 
   - name: ":go: :test_tube: Unit Tests"
@@ -20,5 +20,5 @@ steps:
       - docker-compose#v3.0.3:
           run: test-ci
           volumes:
-            - "${BUILDKITE_BUILD_PATH}/${BUILDKITE_AGENT_ID}-1/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
+            - "${BUILDKITE_BUILD_PATH}/${HOSTNAME}-1/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
             - "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
