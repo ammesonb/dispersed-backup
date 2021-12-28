@@ -30,9 +30,6 @@ lint-ci:
   <<: *lint
   <<: *ci
   #command: ["sleep", "120"]
-  volumes:
-    - "${BUILDKITE_BUILD_CHECKOUT_PATH}/${BUILDKITE_AGENT_ID}-1/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
-    - "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
 
 test: &test
   <<: *dev
@@ -41,9 +38,6 @@ test: &test
 test-ci:
   <<: *test
   <<: *ci
-  volumes:
-    - "${BUILDKITE_BUILD_CHECKOUT_PATH}/${BUILDKITE_AGENT_ID}-1/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
-    - "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
 
 build: &build
   <<: *dev
