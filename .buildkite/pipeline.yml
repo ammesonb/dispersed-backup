@@ -7,12 +7,12 @@ steps:
 
   - wait
 
-  - name: ":golangci-lint:"
+  - name: ":golangci-lint: Linting"
     plugins:
       - docker-compose#v3.0.3:
           run: lint-ci
 
-  - name: ":go: :test_tube:"
+  - name: ":go: :test_tube: Unit Tests"
     plugins:
       - docker-compose#v3.0.3:
           run: test-ci
