@@ -10,9 +10,12 @@ dev: &dev
 ci: &ci
   image: dispersed-backup_dev
   # This will overwrite the dev volumes, so include both
-  #volumes:
-    #- "${BUILDKITE_BUILD_CHECKOUT_PATH}/${BUILDKITE_AGENT_ID}-1/ammesonb/dispersed-backup:/go/src/github.com/ammesonb/dispersed-backup"
-    #- "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
+  # NOTE: for docker-in-docker, this references the HOST file system, not the bk agent
+  # so /buildkite/builds ($BUILDKITE_BUILD_PATH) is synced from host -> agent, so it can
+  # be available for the pipeline builds
+  volumes:
+      - "${BUILDKITE_BUILD_CHECKOUT_PATH}:/go/src/github.com/ammesonb/dispersed-backup"
+      - "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
   environment:
     - BUILDKITE_AGENT_ACCESS_TOKEN
     - BUILDKITE_JOB_ID
