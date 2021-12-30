@@ -2,6 +2,7 @@ package device
 
 import (
 	"fmt"
+
 	"github.com/shirou/gopsutil/disk"
 )
 

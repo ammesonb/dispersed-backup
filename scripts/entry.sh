@@ -39,9 +39,9 @@ if [ "${1}" = "test" ]; then
   go test -v ./...
 elif [ "${1}" = "lint" ]; then
   echo "Imports"
-  goimports -l .
+  goimports -l -w .
   echo "Formatting"
-  go fmt
+  gofmt -l -w .
   echo "Vetting"
   go vet
   echo "Linting"
