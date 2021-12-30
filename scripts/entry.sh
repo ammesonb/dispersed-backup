@@ -32,7 +32,7 @@ critic() {
 }
 
 cycles() {
-  exit $(return_empty "$(gocyclo -over 15)")
+  exit $(return_empty "$(gocyclo -over 15 .)")
 }
 
 if [ "${1}" = "test" ]; then
