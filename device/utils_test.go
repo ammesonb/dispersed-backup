@@ -6,7 +6,6 @@ import (
 
 	"github.com/shirou/gopsutil/disk"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestReserveSpace(t *testing.T) {
@@ -25,10 +24,6 @@ func TestReserveSpace(t *testing.T) {
 	assert.Equal(t, "123abc", dev.DeviceSerial, "Serial persisted")
 	assert.Equal(t, available, dev.AvailableSpace, "AvailableSpace persisted")
 	assert.Equal(t, allocated+needed, dev.AllocatedSpace, "AllocatedSpace incremented")
-}
-
-type MockedPartitions struct {
-	mock.Mock
 }
 
 func makeTestParts(resultCount int, err string) func(bool) ([]disk.PartitionStat, error) {
