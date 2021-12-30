@@ -3,7 +3,7 @@ echo "Running command "${1}""
 
 return_empty() {
   text="${1}"
-  echo "${text}"
+  echo "${text}" 1>&2
   if [ -n "${text}" ]; then
     echo 1
   else
