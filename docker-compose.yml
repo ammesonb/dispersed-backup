@@ -35,27 +35,27 @@ lint-ci: &lint-ci
 
 imports:
   <<: *lint-ci
-  command: ["./.scripts/entry.sh", "imports"]
+  command: ["./scripts/entry.sh", "imports"]
 
 format:
   <<: *lint-ci
-  command: ["./.scripts/entry.sh", "format"]
+  command: ["./scripts/entry.sh", "format"]
 
 vet:
   <<: *lint-ci
-  command: ["./.scripts/entry.sh", "vet"]
+  command: ["./scripts/entry.sh", "vet"]
 
 ci-lint:
   <<: *lint-ci
-  command: ["./.scripts/entry.sh", "ci-lint"]
+  command: ["./scripts/entry.sh", "ci-lint"]
 
 critic:
   <<: *lint-ci
-  command: ["./.scripts/entry.sh", "critic"]
+  command: ["./scripts/entry.sh", "critic"]
 
 cycles:
   <<: *lint-ci
-  command: ["./.scripts/entry.sh", "cycles"]
+  command: ["./scripts/entry.sh", "cycles"]
 
 test: &test
   <<: *dev
