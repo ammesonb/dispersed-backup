@@ -37,6 +37,8 @@ steps:
       - docker-compose#v3.0.3:
           run: cycles
 
+  - wait
+
   - name: ":go: :test_tube: Unit Tests"
     plugins:
       - docker-compose#v3.0.3:
