@@ -3,6 +3,7 @@ package mydb
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -11,6 +12,13 @@ import (
 	"github.com/golang-migrate/migrate/v4/source"
 	"github.com/stretchr/testify/assert"
 )
+
+func DeleteDB(dbPath string) {
+	_, err := os.Stat(dbPath)
+	if err == nil {
+		os.Remove(dbPath)
+	}
+}
 
 // Test connection string is correct
 func TestGetConnStr(t *testing.T) {

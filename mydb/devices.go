@@ -2,10 +2,11 @@ package mydb
 
 import (
 	"database/sql"
-	"fmt"
 
 	"github.com/ammesonb/dispersed-backup/device"
 )
+
+var makeDevice = device.MakeDevice
 
 // GetDevices returns the cached devices from the provided database connection
 func GetDevices(db *sql.DB) []device.Device {
@@ -28,11 +29,7 @@ func GetDevices(db *sql.DB) []device.Device {
 			panic(err)
 		}
 
-		if !rows.NextResultSet() {
-			panic(fmt.Errorf("Expected more devices from DB"))
-		}
-
-		newDev, err := device.MakeDevice(
+		newDev, err := makeDevice(
 			deviceID,
 			mountPoint,
 			serialNumber,
@@ -43,7 +40,32 @@ func GetDevices(db *sql.DB) []device.Device {
 
 		devs = append(devs, newDev)
 
+		if !rows.NextResultSet() {
+			break
+		}
+
 	}
 
 	return devs
+}
+
+// AddDevice adds a new device to the given database instance
+func AddDevice(db *sql.DB, newDevice device.Device) (device.Device, error) {
+	var id int
+	err := db.QueryRow(`
+    INSERT INTO devices (
+      mountPoint,
+      serialNumber
+    )
+    VALUES (
+      $1,
+      $2
+    )
+    RETURNING deviceID
+  `, newDevice.MountPoint, newDevice.DeviceSerial).Scan(&id)
+	if err != nil {
+		return device.Device{}, err
+	}
+
+	return makeDevice(id, newDevice.MountPoint, newDevice.DeviceSerial)
 }

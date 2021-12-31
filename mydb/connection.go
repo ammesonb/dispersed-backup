@@ -3,6 +3,8 @@ package mydb
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -61,11 +63,20 @@ var checkMigration = func(db *sql.DB, dbPath string) {
 	if err != nil {
 		panic(err)
 	}
-	if err = migration.Up(); err != nil {
+	if err = migration.Up(); err != nil && err != migrate.ErrNoChange {
 		panic(err)
 	}
 }
 
 var getMigrations = func() (source.Driver, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+
+	if strings.HasSuffix(cwd, "mydb") || strings.HasSuffix(cwd, "mydb/") {
+		return (&file.File{}).Open("file://migrations")
+	}
+
 	return (&file.File{}).Open("file://mydb/migrations")
 }
