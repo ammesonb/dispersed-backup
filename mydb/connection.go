@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
+	"github.com/golang-migrate/migrate/v4/source"
 	"github.com/golang-migrate/migrate/v4/source/file"
 
 	// Just included for the driver, for now
@@ -13,6 +14,8 @@ import (
 )
 
 var openDB = sql.Open
+var withInstance = sqlite3.WithInstance
+var migrateInstance = migrate.NewWithInstance
 
 // getConnStr returns a DSN for a given database path
 func getConnStr(dbPath string) string {
@@ -44,21 +47,25 @@ var pingDB = func(db *sql.DB) error {
 
 // Check database for any needed migrations
 var checkMigration = func(db *sql.DB, dbPath string) {
-	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
+	driver, err := withInstance(db, &sqlite3.Config{})
 	if err != nil {
 		panic(err)
 	}
 
-	migrationSource, err := (&file.File{}).Open("file://mydb/migrations")
+	migrationSource, err := getMigrations()
 	if err != nil {
 		panic(err)
 	}
 
-	migration, err := migrate.NewWithInstance("file", migrationSource, "db", driver)
+	migration, err := migrateInstance("file", migrationSource, "db", driver)
 	if err != nil {
 		panic(err)
 	}
 	if err = migration.Up(); err != nil {
 		panic(err)
 	}
+}
+
+var getMigrations = func() (source.Driver, error) {
+	return (&file.File{}).Open("file://mydb/migrations")
 }
