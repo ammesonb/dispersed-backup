@@ -9,14 +9,14 @@ import (
 var makeDevice = device.MakeDevice
 
 // GetDevices returns the cached devices from the provided database connection
-func GetDevices(db *sql.DB) []device.Device {
+func GetDevices(db *sql.DB) []*device.Device {
 	rows, err := db.Query("SELECT * FROM devices")
 	if err != nil {
 		panic(err)
 	}
 	defer rows.Close()
 
-	var devs []device.Device
+	var devs []*device.Device
 
 	for rows.Next() {
 		var (
@@ -38,7 +38,7 @@ func GetDevices(db *sql.DB) []device.Device {
 			panic(err)
 		}
 
-		devs = append(devs, newDev)
+		devs = append(devs, &newDev)
 
 		if !rows.NextResultSet() {
 			break

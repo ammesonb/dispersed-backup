@@ -1,0 +1,185 @@
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"sync"
+
+	"github.com/ammesonb/dispersed-backup/device"
+	"github.com/ammesonb/dispersed-backup/mydb"
+)
+
+var getDevices = mydb.GetDevices
+var makeDevice = device.MakeDevice
+var addDBDevice = mydb.AddDevice
+
+// DevCommandAddDevice instructs the manager to add a new device by mount
+var DevCommandAddDevice int = 1
+
+// DevCommandReserveSpace instructs the manager to reserve an amount of space, optionally on a specific mount
+var DevCommandReserveSpace int = 2
+
+// DevCommandFreeSpace instructs the manager to free an amount of space on a given mount
+var DevCommandFreeSpace int = 3
+
+// DeviceCommand contains information needed to execute a command
+type DeviceCommand struct {
+	// Command integer, see variables above
+	command int
+	// Mountpoint and serial, for adding a new device
+	// Mountpoint may also be used to request storing a file on a specific mountpoint
+	mountPoint string
+	serial     string
+	// Space to allocate or free
+	space int64
+}
+
+// DeviceResult contains details about the executed action
+type DeviceResult struct {
+	success bool
+	message string
+	err     error
+}
+
+// DevMan contains the necessary components for interacting with the device manager goroutine
+type DevMan struct {
+	commands chan DeviceCommand
+	results  chan DeviceResult
+	lock     sync.Mutex
+}
+
+// RunManager should be used in a goroutine, and is responsible for managing available device space for file backups
+// A MutEx should be used to maintain one-to-one command -> result behavior
+func RunManager(db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
+	devices := getDevices(db)
+	processing := false
+	processLock := sync.Mutex{}
+
+	go func() {
+		process(&processLock, &processing, devices, db, commands, results)
+	}()
+}
+
+func process(processLock *sync.Mutex, processing *bool, devices []*device.Device, db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
+	// This should capture the device state to ensure we don't lose in-progress allocations
+	// And simply restart the device handler
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered. Error:\n", r)
+			if *processing {
+				processLock.Unlock()
+
+				results <- DeviceResult{false, "", fmt.Errorf("Panic during execution")}
+			}
+
+			handle(processLock, processing, devices, db, commands, results)
+
+		}
+	}()
+
+	handle(processLock, processing, devices, db, commands, results)
+}
+
+var handle = func(processLock *sync.Mutex, processing *bool, devices []*device.Device, db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
+	// TODO: multiple command test to ensure this works and doesn't exit when no command to read
+	for command := range commands {
+		processLock.Lock()
+		*processing = true
+
+		switch command.command {
+		case DevCommandAddDevice:
+			if len(command.mountPoint) == 0 {
+				results <- DeviceResult{false, "", fmt.Errorf("Mountpoint required")}
+			}
+
+			device := addDevice(command, db, results)
+			if device.DeviceID > 0 {
+				devices = append(devices, &device)
+				results <- DeviceResult{true, "Device added successfully", nil}
+			}
+		case DevCommandReserveSpace:
+			err := reserveSpace(command, devices)
+			if err != nil {
+				results <- DeviceResult{false, "", err}
+			} else {
+				results <- DeviceResult{true, "Space allocated", nil}
+			}
+		case DevCommandFreeSpace:
+			err := freeSpace(command, devices)
+			if err != nil {
+				results <- DeviceResult{false, "", err}
+			} else {
+				results <- DeviceResult{true, "Space freed", nil}
+			}
+
+		default:
+			results <- DeviceResult{false, "", fmt.Errorf("%d at path %s is not a recognized command", command.command, command.mountPoint)}
+		}
+
+		processLock.Unlock()
+		*processing = false
+	}
+}
+
+// addDevice wraps functionality to add a new device, returning the result
+var addDevice = func(command DeviceCommand, db *sql.DB, results chan<- DeviceResult) device.Device {
+	toAdd, err := makeDevice(0, command.mountPoint, command.serial)
+	if err != nil {
+		results <- DeviceResult{false, "", err}
+		return device.Device{}
+	}
+
+	addedDev, err := addDBDevice(db, toAdd)
+	if err != nil {
+		results <- DeviceResult{false, "", err}
+		return device.Device{}
+	}
+
+	return addedDev
+}
+
+// reserveSpace attempts to allocate space on
+var reserveSpace = func(command DeviceCommand, devices []*device.Device) error {
+	if len(devices) == 0 {
+		return fmt.Errorf("No devices available -- add one first")
+	}
+
+	for _, dev := range devices {
+		// If requested size is negative, then would be less than an int64 representation of remaining space anyways
+		if len(command.mountPoint) > 0 && command.mountPoint == dev.MountPoint {
+			if dev.RemainingSpace() > uint64(command.space) {
+				dev.ReserveSpace(command.space)
+				return nil
+			}
+
+			return fmt.Errorf("Insufficient space on requested device")
+			// Check device space
+		} else if len(command.mountPoint) == 0 && dev.RemainingSpace() > uint64(command.space) {
+			dev.ReserveSpace(command.space)
+			return nil
+		}
+	}
+
+	return fmt.Errorf("No device with sufficient space -- add another or make space")
+}
+
+var freeSpace = func(command DeviceCommand, devices []*device.Device) error {
+	if len(command.mountPoint) == 0 {
+		return fmt.Errorf("Mountpoint required")
+	}
+
+	var selected *device.Device = &device.Device{}
+
+	for _, dev := range devices {
+		if dev.MountPoint == command.mountPoint {
+			selected = dev
+			break
+		}
+	}
+	if selected.DeviceID == 0 {
+		return fmt.Errorf("No such mountpoint")
+	}
+
+	selected.ReserveSpace(-1 * command.space)
+	return nil
+}

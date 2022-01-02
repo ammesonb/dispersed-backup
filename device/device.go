@@ -19,14 +19,18 @@ type Device struct {
 	AllocatedSpace uint64
 }
 
-// Reserves the requested space on the device, returning a new device
-func reserveSpace(dev Device, needed uint64) Device { //nolint
-	return Device{
-		dev.DeviceID,
-		dev.MountPoint,
-		dev.DeviceSerial,
-		dev.AvailableSpace,
-		dev.AllocatedSpace + needed,
+// RemainingSpace returns the amount of space remaining on the device
+func (dev *Device) RemainingSpace() uint64 {
+	return dev.AvailableSpace - dev.AllocatedSpace
+}
+
+// ReserveSpace reserves the requested space on the device
+// Space can be negative, to free allocated space
+func (dev *Device) ReserveSpace(needed int64) {
+	if needed > 0 {
+		dev.AllocatedSpace += uint64(needed)
+	} else {
+		dev.AllocatedSpace -= uint64(needed)
 	}
 }
 
