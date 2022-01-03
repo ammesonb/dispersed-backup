@@ -101,11 +101,11 @@ var handle = func(processLock *sync.Mutex, processing *bool, devices *[]*device.
 				results <- DeviceResult{false, "", err}
 			}
 		case DevCommandReserveSpace:
-			err := reserveSpace(command, devices)
+			mount, err := reserveSpace(command, devices)
 			if err != nil {
 				results <- DeviceResult{false, "", err}
 			} else {
-				results <- DeviceResult{true, "Space allocated", nil}
+				results <- DeviceResult{true, mount, nil}
 			}
 		case DevCommandFreeSpace:
 			err := freeSpace(command, devices)
@@ -140,9 +140,9 @@ var addDevice = func(command DeviceCommand, db *sql.DB) (device.Device, error) {
 }
 
 // reserveSpace attempts to allocate space on
-var reserveSpace = func(command DeviceCommand, devices *[]*device.Device) error {
+var reserveSpace = func(command DeviceCommand, devices *[]*device.Device) (string, error) {
 	if len(*devices) == 0 {
-		return fmt.Errorf("No devices available -- add one first")
+		return "", fmt.Errorf("No devices available -- add one first")
 	}
 
 	for _, dev := range *devices {
@@ -150,18 +150,18 @@ var reserveSpace = func(command DeviceCommand, devices *[]*device.Device) error 
 		if len(command.mountPoint) > 0 && command.mountPoint == dev.MountPoint {
 			if dev.RemainingSpace() > uint64(command.space) {
 				dev.ReserveSpace(command.space)
-				return nil
+				return dev.MountPoint, nil
 			}
 
-			return fmt.Errorf("Insufficient space on requested device")
+			return "", fmt.Errorf("Insufficient space on requested device")
 			// Check device space
 		} else if len(command.mountPoint) == 0 && dev.RemainingSpace() > uint64(command.space) {
 			dev.ReserveSpace(command.space)
-			return nil
+			return dev.MountPoint, nil
 		}
 	}
 
-	return fmt.Errorf("No device with sufficient space -- add another or make space")
+	return "", fmt.Errorf("No device with sufficient space -- add another or make space")
 }
 
 var freeSpace = func(command DeviceCommand, devices *[]*device.Device) error {

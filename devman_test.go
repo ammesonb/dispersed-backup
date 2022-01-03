@@ -212,14 +212,14 @@ func TestReserving(t *testing.T) {
 	realRes := reserveSpace
 
 	count := 0
-	reserveSpace = func(_ DeviceCommand, _ *[]*device.Device) error {
+	reserveSpace = func(_ DeviceCommand, _ *[]*device.Device) (string, error) {
 		count++
 
 		if count == 1 {
-			return fmt.Errorf("Invalid")
+			return "", fmt.Errorf("Invalid")
 		}
 
-		return nil
+		return "/mnt/1", nil
 	}
 
 	lock := sync.Mutex{}
@@ -241,11 +241,13 @@ func TestReserving(t *testing.T) {
 	result := <-results
 	assert.False(t, result.success, "Should fail reserve space")
 	assert.Errorf(t, result.err, "Invalid", "Error message returned")
+	assert.Equal(t, "", result.message, "No mount returned")
 
 	handle(&lock, &processing, &devices, &sql.DB{}, commands, results)
 	result = <-results
 	assert.True(t, result.success, "Should succeed")
 	assert.Nil(t, result.err, "No error returned")
+	assert.Equal(t, "/mnt/1", result.message, "Mount path returned")
 }
 
 // Check device adding works as expected
@@ -328,31 +330,38 @@ func TestAddDevice(t *testing.T) {
 
 func TestReserveSpace(t *testing.T) {
 	devices := make([]*device.Device, 0)
-	err := reserveSpace(DeviceCommand{}, &devices)
+	mount, err := reserveSpace(DeviceCommand{}, &devices)
+	assert.Equal(t, mount, "", "Mount is empty")
 	assert.EqualErrorf(t, err, "No devices available -- add one first", "Expected no device available")
 
 	devices = append(devices, &device.Device{DeviceID: 1, MountPoint: "/mnt/1", DeviceSerial: "ABC123", AvailableSpace: 100, AllocatedSpace: 100})
 	devices = append(devices, &device.Device{DeviceID: 2, MountPoint: "/mnt/2", DeviceSerial: "ABC223", AvailableSpace: 200, AllocatedSpace: 100})
 	devices = append(devices, &device.Device{DeviceID: 3, MountPoint: "/mnt/3", DeviceSerial: "ABC223", AvailableSpace: 200, AllocatedSpace: 50})
-	err = reserveSpace(DeviceCommand{mountPoint: "/mnt/1"}, &devices)
+	mount, err = reserveSpace(DeviceCommand{mountPoint: "/mnt/1"}, &devices)
+	assert.Equal(t, mount, "", "Mount is empty")
 	assert.EqualErrorf(t, err, "Insufficient space on requested device", "Expected insufficient space")
 
-	err = reserveSpace(DeviceCommand{space: 200}, &devices)
+	mount, err = reserveSpace(DeviceCommand{space: 200}, &devices)
+	assert.Equal(t, mount, "", "Mount is empty")
 	assert.EqualErrorf(t, err, "No device with sufficient space -- add another or make space", "Expected no device with space")
 
-	err = reserveSpace(DeviceCommand{mountPoint: "/mnt/3", space: 25}, &devices)
+	mount, err = reserveSpace(DeviceCommand{mountPoint: "/mnt/3", space: 25}, &devices)
 	assert.Nil(t, err, "No error requesting allocatable space")
+	assert.Equal(t, mount, "/mnt/3", "Requested mount returned")
 	assert.Equal(t, uint64(125), devices[2].RemainingSpace(), "25 bytes was reserved")
 
-	err = reserveSpace(DeviceCommand{space: 50}, &devices)
+	mount, err = reserveSpace(DeviceCommand{space: 50}, &devices)
 	assert.Nil(t, err, "No error requesting allocatable space")
+	assert.Equal(t, mount, "/mnt/2", "Mount returned")
 	assert.Equal(t, uint64(150), devices[1].AllocatedSpace, "50 bytes was reserved")
 
-	err = reserveSpace(DeviceCommand{space: 125}, &devices)
+	mount, err = reserveSpace(DeviceCommand{space: 125}, &devices)
+	assert.Equal(t, mount, "", "No mount returned")
 	assert.Errorf(t, err, "No device with sufficient space -- add another or make space", "Cannot fully max out a drive")
 
-	err = reserveSpace(DeviceCommand{space: 75}, &devices)
+	mount, err = reserveSpace(DeviceCommand{space: 75}, &devices)
 	assert.Nil(t, err, "No error requesting allocatable space")
+	assert.Equal(t, mount, "/mnt/3", "Third mount returned")
 	assert.Equal(t, uint64(150), devices[2].AllocatedSpace, "75 bytes was reserved")
 
 	assert.Equal(t, uint64(0), devices[0].RemainingSpace(), "No space remaining on device 1")
