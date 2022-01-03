@@ -14,7 +14,7 @@ import (
 // Checks expected functions are called
 func TestRunManager(t *testing.T) {
 	realGet := getDevices
-	realProcess := process
+	realHandle := handle
 
 	getCalled := false
 
@@ -24,7 +24,7 @@ func TestRunManager(t *testing.T) {
 	}
 
 	// Can't use simple bool since this runs in separate goroutine
-	process = func(_ *sync.Mutex, _ *bool, _ *[]*device.Device, _ *sql.DB, _ <-chan DeviceCommand, result chan<- DeviceResult) {
+	handle = func(_ *sync.Mutex, _ *bool, _ *[]*device.Device, _ *sql.DB, _ <-chan DeviceCommand, result chan<- DeviceResult) {
 		result <- DeviceResult{true, "Called", nil}
 	}
 
@@ -32,11 +32,12 @@ func TestRunManager(t *testing.T) {
 	defer func() {
 		close(results)
 		getDevices = realGet
-		process = realProcess
+		handle = realHandle
 	}()
 
 	RunManager(&sql.DB{}, make(chan DeviceCommand, 1), results)
-	assert.True(t, getCalled, "Get devies called")
+	time.Sleep(100 * time.Millisecond)
+	assert.True(t, getCalled, "Get devices called")
 
 	select {
 	case msg := <-results:
@@ -47,7 +48,7 @@ func TestRunManager(t *testing.T) {
 }
 
 // Check process calls handle, and restarts it with state on panic
-func TestProcesRestartsAndPersists(t *testing.T) {
+func TestProcessRestartsAndPersists(t *testing.T) {
 	realHandle := handle
 
 	handleCalled := 0
@@ -55,8 +56,8 @@ func TestProcesRestartsAndPersists(t *testing.T) {
 		handleCalled++
 
 		(*devices)[0].ReserveSpace(int64(10 * handleCalled))
-		if handleCalled < 2 {
-			panic("Call handle again")
+		if handleCalled < 3 {
+			panic("Persist - call handle again")
 		}
 	}
 
@@ -65,7 +66,7 @@ func TestProcesRestartsAndPersists(t *testing.T) {
 	devices := make([]*device.Device, 0)
 	devices = append(devices, &device.Device{DeviceID: 1, MountPoint: "/mnt/1", DeviceSerial: "ABC123", AvailableSpace: 100, AllocatedSpace: 10})
 	commands := make(chan DeviceCommand, 1)
-	results := make(chan DeviceResult, 1)
+	results := make(chan DeviceResult, 3)
 
 	defer func() {
 		close(commands)
@@ -75,15 +76,14 @@ func TestProcesRestartsAndPersists(t *testing.T) {
 
 	process(&lock, &processing, &devices, &sql.DB{}, commands, results)
 
-	assert.Equal(t, 2, handleCalled, "Handle restarted once before clean exit")
-	assert.Equal(t, uint64(60), devices[0].RemainingSpace(), "Reserved space persisted across panic")
+	assert.Equal(t, 3, handleCalled, "Handle restarted twice before clean exit")
+	assert.Equal(t, uint64(30), devices[0].RemainingSpace(), "Reserved space persisted across panic")
 
 	select {
 	case <-results:
-		assert.Fail(t, "Should not have received message on results")
+		assert.Fail(t, "No failure on results channel")
 	case <-time.After(100 * time.Millisecond):
 		break
-
 	}
 }
 
@@ -97,7 +97,7 @@ func TestProcessUnlocks(t *testing.T) {
 
 		(*devices)[0].ReserveSpace(int64(10 * handleCalled))
 		if handleCalled < 2 {
-			panic("Call handle again")
+			panic("Unlock - call handle again")
 		}
 	}
 
@@ -119,6 +119,13 @@ func TestProcessUnlocks(t *testing.T) {
 	process(&lock, &processing, &devices, &sql.DB{}, commands, results)
 
 	assert.False(t, processing, "Processing cleared")
+	select {
+	case result := <-results:
+		assert.False(t, result.success, "Failure result outputted")
+		assert.EqualErrorf(t, result.err, "Panic during execution", "Panic message for result")
+	case <-time.After(100 * time.Millisecond):
+		assert.Fail(t, "Should have gotten fail result on channel")
+	}
 }
 
 // Check handle range locks
@@ -137,10 +144,10 @@ func TestHandleLocks(t *testing.T) {
 
 	defer func() {
 		r := recover()
-		if r == nil {
-			assert.Fail(t, "Panic should be recoverable")
-		} else {
+		if r != nil {
 			assert.True(t, processing, "Processing should be set")
+		} else {
+			assert.Fail(t, "Panic should be recoverable")
 		}
 
 		addDevice = realAdd

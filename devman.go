@@ -60,7 +60,7 @@ func RunManager(db *sql.DB, commands <-chan DeviceCommand, results chan<- Device
 	}()
 }
 
-var process = func(processLock *sync.Mutex, processing *bool, devices *[]*device.Device, db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
+func process(processLock *sync.Mutex, processing *bool, devices *[]*device.Device, db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
 	// This should capture the device state to ensure we don't lose in-progress allocations
 	// And simply restart the device handler
 	defer func() {
@@ -73,7 +73,7 @@ var process = func(processLock *sync.Mutex, processing *bool, devices *[]*device
 				results <- DeviceResult{false, "", fmt.Errorf("Panic during execution")}
 			}
 
-			handle(processLock, processing, devices, db, commands, results)
+			process(processLock, processing, devices, db, commands, results)
 
 		}
 	}()

@@ -36,6 +36,7 @@ func (dev *Device) ReserveSpace(needed int64) {
 
 // MakeDevice creates a device based on the provided path and optional serial
 func MakeDevice(devID int, path string, serial string) (Device, error) {
+	// TODO: make sure device is read & writable
 	parts, err := getParts(false)
 	if err != nil {
 		return Device{}, fmt.Errorf("Failed to get partitions: %v", err)
