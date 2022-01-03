@@ -56,11 +56,11 @@ func RunManager(db *sql.DB, commands <-chan DeviceCommand, results chan<- Device
 	processLock := sync.Mutex{}
 
 	go func() {
-		process(&processLock, &processing, devices, db, commands, results)
+		process(&processLock, &processing, &devices, db, commands, results)
 	}()
 }
 
-func process(processLock *sync.Mutex, processing *bool, devices []*device.Device, db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
+var process = func(processLock *sync.Mutex, processing *bool, devices *[]*device.Device, db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
 	// This should capture the device state to ensure we don't lose in-progress allocations
 	// And simply restart the device handler
 	defer func() {
@@ -68,6 +68,7 @@ func process(processLock *sync.Mutex, processing *bool, devices []*device.Device
 			fmt.Println("Recovered. Error:\n", r)
 			if *processing {
 				processLock.Unlock()
+				*processing = false
 
 				results <- DeviceResult{false, "", fmt.Errorf("Panic during execution")}
 			}
@@ -80,8 +81,7 @@ func process(processLock *sync.Mutex, processing *bool, devices []*device.Device
 	handle(processLock, processing, devices, db, commands, results)
 }
 
-var handle = func(processLock *sync.Mutex, processing *bool, devices []*device.Device, db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
-	// TODO: multiple command test to ensure this works and doesn't exit when no command to read
+var handle = func(processLock *sync.Mutex, processing *bool, devices *[]*device.Device, db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
 	for command := range commands {
 		processLock.Lock()
 		*processing = true
@@ -90,12 +90,15 @@ var handle = func(processLock *sync.Mutex, processing *bool, devices []*device.D
 		case DevCommandAddDevice:
 			if len(command.mountPoint) == 0 {
 				results <- DeviceResult{false, "", fmt.Errorf("Mountpoint required")}
+				break
 			}
 
-			device := addDevice(command, db, results)
-			if device.DeviceID > 0 {
-				devices = append(devices, &device)
+			device, err := addDevice(command, db)
+			if err == nil {
+				*devices = append(*devices, &device)
 				results <- DeviceResult{true, "Device added successfully", nil}
+			} else {
+				results <- DeviceResult{false, "", err}
 			}
 		case DevCommandReserveSpace:
 			err := reserveSpace(command, devices)
@@ -122,29 +125,27 @@ var handle = func(processLock *sync.Mutex, processing *bool, devices []*device.D
 }
 
 // addDevice wraps functionality to add a new device, returning the result
-var addDevice = func(command DeviceCommand, db *sql.DB, results chan<- DeviceResult) device.Device {
+var addDevice = func(command DeviceCommand, db *sql.DB) (device.Device, error) {
 	toAdd, err := makeDevice(0, command.mountPoint, command.serial)
 	if err != nil {
-		results <- DeviceResult{false, "", err}
-		return device.Device{}
+		return device.Device{}, err
 	}
 
 	addedDev, err := addDBDevice(db, toAdd)
 	if err != nil {
-		results <- DeviceResult{false, "", err}
-		return device.Device{}
+		return device.Device{}, err
 	}
 
-	return addedDev
+	return addedDev, nil
 }
 
 // reserveSpace attempts to allocate space on
-var reserveSpace = func(command DeviceCommand, devices []*device.Device) error {
-	if len(devices) == 0 {
+var reserveSpace = func(command DeviceCommand, devices *[]*device.Device) error {
+	if len(*devices) == 0 {
 		return fmt.Errorf("No devices available -- add one first")
 	}
 
-	for _, dev := range devices {
+	for _, dev := range *devices {
 		// If requested size is negative, then would be less than an int64 representation of remaining space anyways
 		if len(command.mountPoint) > 0 && command.mountPoint == dev.MountPoint {
 			if dev.RemainingSpace() > uint64(command.space) {
@@ -163,14 +164,14 @@ var reserveSpace = func(command DeviceCommand, devices []*device.Device) error {
 	return fmt.Errorf("No device with sufficient space -- add another or make space")
 }
 
-var freeSpace = func(command DeviceCommand, devices []*device.Device) error {
+var freeSpace = func(command DeviceCommand, devices *[]*device.Device) error {
 	if len(command.mountPoint) == 0 {
 		return fmt.Errorf("Mountpoint required")
 	}
 
 	var selected *device.Device = &device.Device{}
 
-	for _, dev := range devices {
+	for _, dev := range *devices {
 		if dev.MountPoint == command.mountPoint {
 			selected = dev
 			break
