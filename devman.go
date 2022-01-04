@@ -52,75 +52,59 @@ type DevMan struct {
 // A MutEx should be used to maintain one-to-one command -> result behavior
 func RunManager(db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
 	devices := getDevices(db)
-	processing := false
-	processLock := sync.Mutex{}
 
 	go func() {
-		process(&processLock, &processing, &devices, db, commands, results)
+		process(&devices, db, commands, results)
 	}()
 }
 
-func process(processLock *sync.Mutex, processing *bool, devices *[]*device.Device, db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
-	// This should capture the device state to ensure we don't lose in-progress allocations
-	// And simply restart the device handler
+func process(devices *[]*device.Device, db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
+	for command := range commands {
+		handle(command, devices, db, commands, results)
+	}
+}
+
+var handle = func(command DeviceCommand, devices *[]*device.Device, db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
 	defer func() {
 		if r := recover(); r != nil {
+			// Ignore errors, since need to keep processing requests
 			fmt.Println("Recovered. Error:\n", r)
-			if *processing {
-				processLock.Unlock()
-				*processing = false
-
-				results <- DeviceResult{false, "", fmt.Errorf("Panic during execution")}
-			}
-
-			process(processLock, processing, devices, db, commands, results)
-
+			// Since only called when command received, ensure we inform the caller there was an error
+			results <- DeviceResult{false, "", fmt.Errorf("Panic during execution")}
 		}
 	}()
 
-	handle(processLock, processing, devices, db, commands, results)
-}
-
-var handle = func(processLock *sync.Mutex, processing *bool, devices *[]*device.Device, db *sql.DB, commands <-chan DeviceCommand, results chan<- DeviceResult) {
-	for command := range commands {
-		processLock.Lock()
-		*processing = true
-
-		switch command.command {
-		case DevCommandAddDevice:
-			if len(command.mountPoint) == 0 {
-				results <- DeviceResult{false, "", fmt.Errorf("Mountpoint required")}
-				break
-			}
-
-			device, err := addDevice(command, db)
-			if err == nil {
-				*devices = append(*devices, &device)
-				results <- DeviceResult{true, "Device added successfully", nil}
-			} else {
-				results <- DeviceResult{false, "", err}
-			}
-		case DevCommandReserveSpace:
-			mount, err := reserveSpace(command, devices)
-			if err != nil {
-				results <- DeviceResult{false, "", err}
-			} else {
-				results <- DeviceResult{true, mount, nil}
-			}
-		case DevCommandFreeSpace:
-			err := freeSpace(command, devices)
-			if err != nil {
-				results <- DeviceResult{false, "", err}
-			} else {
-				results <- DeviceResult{true, "Space freed", nil}
-			}
-
-		default:
-			results <- DeviceResult{false, "", fmt.Errorf("%d at path %s is not a recognized command", command.command, command.mountPoint)}
+	switch command.command {
+	case DevCommandAddDevice:
+		if len(command.mountPoint) == 0 {
+			results <- DeviceResult{false, "", fmt.Errorf("Mountpoint required")}
+			break
 		}
 
-		processLock.Unlock()
-		*processing = false
+		device, err := addDevice(command, db)
+		if err == nil {
+			*devices = append(*devices, &device)
+			results <- DeviceResult{true, "Device added successfully", nil}
+		} else {
+			results <- DeviceResult{false, "", err}
+		}
+	case DevCommandReserveSpace:
+		mount, err := reserveSpace(command, devices)
+		if err != nil {
+			results <- DeviceResult{false, "", err}
+		} else {
+			results <- DeviceResult{true, mount, nil}
+		}
+	case DevCommandFreeSpace:
+		err := freeSpace(command, devices)
+		if err != nil {
+			results <- DeviceResult{false, "", err}
+		} else {
+			results <- DeviceResult{true, "Space freed", nil}
+		}
+
+	default:
+		results <- DeviceResult{false, "", fmt.Errorf("%d at path %s is not a recognized command", command.command, command.mountPoint)}
 	}
 }
 

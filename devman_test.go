@@ -3,16 +3,16 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
+	_ "time"
 
 	"github.com/ammesonb/dispersed-backup/device"
 	"github.com/stretchr/testify/assert"
 )
 
 // Checks expected functions are called
-func TestRunManager(t *testing.T) {
+/*func TestRunManager(t *testing.T) {
 	realGet := getDevices
 	realHandle := handle
 
@@ -24,9 +24,12 @@ func TestRunManager(t *testing.T) {
 	}
 
 	// Can't use simple bool since this runs in separate goroutine
-	handle = func(_ *sync.Mutex, _ *bool, _ *[]*device.Device, _ *sql.DB, _ <-chan DeviceCommand, result chan<- DeviceResult) {
+	handle = func(_ *bool, _ DeviceCommand, _ *[]*device.Device, _ *sql.DB, _ <-chan DeviceCommand, result chan<- DeviceResult) {
 		result <- DeviceResult{true, "Called", nil}
 	}
+
+	commands := make(chan DeviceCommand, 1)
+	commands <- DeviceCommand{}
 
 	results := make(chan DeviceResult, 1)
 	defer func() {
@@ -35,130 +38,115 @@ func TestRunManager(t *testing.T) {
 		handle = realHandle
 	}()
 
-	RunManager(&sql.DB{}, make(chan DeviceCommand, 1), results)
+	RunManager(&sql.DB{}, commands, results)
 	time.Sleep(100 * time.Millisecond)
 	assert.True(t, getCalled, "Get devices called")
 
+	fmt.Println("Selecting")
+
 	select {
 	case msg := <-results:
+		fmt.Println("Result")
 		assert.Equal(t, "Called", msg.message, "Processing message received")
 	case <-time.After(100 * time.Millisecond):
+		fmt.Println("timeout")
 		assert.Fail(t, "Processing message not received")
 	}
-}
+
+	fmt.Println("Closing")
+
+	close(commands)
+}*/
 
 // Check process calls handle, and restarts it with state on panic
 func TestProcessRestartsAndPersists(t *testing.T) {
-	realHandle := handle
+	realReserve := reserveSpace
 
-	handleCalled := 0
-	handle = func(_ *sync.Mutex, _ *bool, devices *[]*device.Device, _ *sql.DB, _ <-chan DeviceCommand, _ chan<- DeviceResult) {
-		handleCalled++
+	loops := 3
 
-		(*devices)[0].ReserveSpace(int64(10 * handleCalled))
-		if handleCalled < 3 {
+	called := 0
+	reserveSpace = func(_ DeviceCommand, devices *[]*device.Device) (string, error) {
+		called++
+
+		(*devices)[0].ReserveSpace(int64(10 * called))
+		if called < loops {
 			panic("Persist - call handle again")
+		}
+
+		return "/mnt", nil
+	}
+
+	devices := make([]*device.Device, 0)
+	devices = append(devices, &device.Device{DeviceID: 1, MountPoint: "/mnt/1", DeviceSerial: "ABC123", AvailableSpace: 100, AllocatedSpace: 10})
+	commands := make(chan DeviceCommand, loops)
+	results := make(chan DeviceResult, loops)
+
+	defer func() {
+		close(results)
+		reserveSpace = realReserve
+	}()
+
+	// Ensure handle gets called three times
+	for n := 0; n < loops; n++ {
+		commands <- DeviceCommand{command: DevCommandReserveSpace}
+	}
+	close(commands)
+
+	process(&devices, &sql.DB{}, commands, results)
+
+	assert.Equal(t, loops, called, "Handle restarted twice before clean exit")
+	assert.Equal(t, uint64(30), devices[0].RemainingSpace(), "Reserved space persisted across panic")
+
+	for n := 0; n < loops-1; n++ {
+		select {
+		case result := <-results:
+			assert.False(t, result.success, "Panic should cause failure")
+			assert.EqualErrorf(t, result.err, "Panic during execution", "Panic message sent")
+		case <-time.After(100 * time.Millisecond):
+			assert.Fail(t, "Expected result not sent")
 		}
 	}
 
-	lock := sync.Mutex{}
-	processing := false
-	devices := make([]*device.Device, 0)
-	devices = append(devices, &device.Device{DeviceID: 1, MountPoint: "/mnt/1", DeviceSerial: "ABC123", AvailableSpace: 100, AllocatedSpace: 10})
-	commands := make(chan DeviceCommand, 1)
-	results := make(chan DeviceResult, 3)
-
-	defer func() {
-		close(commands)
-		close(results)
-		handle = realHandle
-	}()
-
-	process(&lock, &processing, &devices, &sql.DB{}, commands, results)
-
-	assert.Equal(t, 3, handleCalled, "Handle restarted twice before clean exit")
-	assert.Equal(t, uint64(30), devices[0].RemainingSpace(), "Reserved space persisted across panic")
+	select {
+	case result := <-results:
+		assert.True(t, result.success, "Last attempt succeeded")
+		assert.Nil(t, result.err, "No error on last attempt")
+	case <-time.After(100 * time.Millisecond):
+		assert.Fail(t, "Expected result not sent")
+	}
 
 	select {
 	case <-results:
-		assert.Fail(t, "No failure on results channel")
+		assert.Fail(t, "Extra message in results")
 	case <-time.After(100 * time.Millisecond):
 		break
 	}
+
 }
 
-// Check process unlocks the processing flag on panic
-func TestProcessUnlocks(t *testing.T) {
-	realHandle := handle
-
-	handleCalled := 0
-	handle = func(_ *sync.Mutex, _ *bool, devices *[]*device.Device, _ *sql.DB, _ <-chan DeviceCommand, _ chan<- DeviceResult) {
-		handleCalled++
-
-		(*devices)[0].ReserveSpace(int64(10 * handleCalled))
-		if handleCalled < 2 {
-			panic("Unlock - call handle again")
-		}
-	}
-
-	lock := sync.Mutex{}
-	lock.Lock()
-	processing := true
-
-	devices := make([]*device.Device, 0)
-	devices = append(devices, &device.Device{DeviceID: 1, MountPoint: "/mnt/1", DeviceSerial: "ABC123", AvailableSpace: 100, AllocatedSpace: 10})
-	commands := make(chan DeviceCommand, 1)
-	results := make(chan DeviceResult, 1)
-
-	defer func() {
-		close(commands)
-		close(results)
-		handle = realHandle
-	}()
-
-	process(&lock, &processing, &devices, &sql.DB{}, commands, results)
-
-	assert.False(t, processing, "Processing cleared")
-	select {
-	case result := <-results:
-		assert.False(t, result.success, "Failure result outputted")
-		assert.EqualErrorf(t, result.err, "Panic during execution", "Panic message for result")
-	case <-time.After(100 * time.Millisecond):
-		assert.Fail(t, "Should have gotten fail result on channel")
-	}
-}
-
-// Check handle range locks
-func TestHandleLocks(t *testing.T) {
+// Check a result is sent on panic
+func TestPanicSendsResult(t *testing.T) {
 	realAdd := addDevice
 
 	addDevice = func(_ DeviceCommand, _ *sql.DB) (device.Device, error) {
 		panic("nope")
 	}
 
-	lock := sync.Mutex{}
-	processing := false
 	devices := make([]*device.Device, 0)
 	commands := make(chan DeviceCommand, 10)
 	results := make(chan DeviceResult, 10)
 
 	defer func() {
-		r := recover()
-		if r != nil {
-			assert.True(t, processing, "Processing should be set")
-		} else {
-			assert.Fail(t, "Panic should be recoverable")
-		}
-
 		addDevice = realAdd
+		close(commands)
 		close(results)
 	}()
 
-	commands <- DeviceCommand{command: DevCommandAddDevice, mountPoint: "anything"}
-	close(commands)
+	handle(DeviceCommand{command: DevCommandAddDevice, mountPoint: "wherever"}, &devices, &sql.DB{}, commands, results)
 
-	handle(&lock, &processing, &devices, &sql.DB{}, commands, results)
-
+	result := <-results
+	assert.False(t, result.success, "Should fail on panic")
+	assert.EqualErrorf(t, result.err, "Panic during execution", "Panic has expected message")
 }
 
 // Check device is added only for non-errors, and persisted outside scope
@@ -176,8 +164,6 @@ func TestDeviceAdding(t *testing.T) {
 		return device.Device{DeviceID: 2}, nil
 	}
 
-	lock := sync.Mutex{}
-	processing := false
 	devices := make([]*device.Device, 0)
 	commands := make(chan DeviceCommand, 10)
 	results := make(chan DeviceResult, 10)
@@ -198,7 +184,7 @@ func TestDeviceAdding(t *testing.T) {
 	}
 	close(commands)
 
-	handle(&lock, &processing, &devices, &sql.DB{}, commands, results)
+	process(&devices, &sql.DB{}, commands, results)
 
 	result := <-results
 	assert.False(t, result.success, "Should fail device add without mount")
@@ -229,8 +215,6 @@ func TestReserving(t *testing.T) {
 		return "/mnt/1", nil
 	}
 
-	lock := sync.Mutex{}
-	processing := false
 	devices := make([]*device.Device, 0)
 	commands := make(chan DeviceCommand, 10)
 	results := make(chan DeviceResult, 10)
@@ -244,13 +228,13 @@ func TestReserving(t *testing.T) {
 	commands <- DeviceCommand{command: DevCommandReserveSpace}
 	close(commands)
 
-	handle(&lock, &processing, &devices, &sql.DB{}, commands, results)
+	handle(DeviceCommand{command: DevCommandReserveSpace}, &devices, &sql.DB{}, commands, results)
 	result := <-results
 	assert.False(t, result.success, "Should fail reserve space")
 	assert.Errorf(t, result.err, "Invalid", "Error message returned")
 	assert.Equal(t, "", result.message, "No mount returned")
 
-	handle(&lock, &processing, &devices, &sql.DB{}, commands, results)
+	handle(DeviceCommand{command: DevCommandReserveSpace}, &devices, &sql.DB{}, commands, results)
 	result = <-results
 	assert.True(t, result.success, "Should succeed")
 	assert.Nil(t, result.err, "No error returned")
@@ -272,8 +256,6 @@ func TestFreeing(t *testing.T) {
 		return nil
 	}
 
-	lock := sync.Mutex{}
-	processing := false
 	devices := make([]*device.Device, 0)
 	commands := make(chan DeviceCommand, 10)
 	results := make(chan DeviceResult, 10)
@@ -287,12 +269,12 @@ func TestFreeing(t *testing.T) {
 	commands <- DeviceCommand{command: DevCommandFreeSpace}
 	close(commands)
 
-	handle(&lock, &processing, &devices, &sql.DB{}, commands, results)
+	handle(DeviceCommand{command: DevCommandFreeSpace}, &devices, &sql.DB{}, commands, results)
 	result := <-results
 	assert.False(t, result.success, "Should fail free space")
 	assert.Errorf(t, result.err, "Invalid", "Error message returned")
 
-	handle(&lock, &processing, &devices, &sql.DB{}, commands, results)
+	handle(DeviceCommand{command: DevCommandFreeSpace}, &devices, &sql.DB{}, commands, results)
 	result = <-results
 	assert.True(t, result.success, "Should succeed")
 	assert.Nil(t, result.err, "No error returned")
