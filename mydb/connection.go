@@ -48,6 +48,8 @@ var pingDB = func(db *sql.DB) error {
 }
 
 // Check database for any needed migrations
+// NOTE: this is single-threaded so not a big deal to check on startup
+// If running in parallel or with more load, should be done as part of deployments
 var checkMigration = func(db *sql.DB, dbPath string) {
 	driver, err := withInstance(db, &sqlite3.Config{})
 	if err != nil {
