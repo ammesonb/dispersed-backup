@@ -69,7 +69,7 @@ var handle = func(command DeviceCommand, devices *[]*device.Device, db *sql.DB, 
 	defer func() {
 		if r := recover(); r != nil {
 			// Ignore errors, since need to keep processing requests
-			fmt.Println("evMan recovered. Error:\n", r)
+			fmt.Println("DevMan recovered. Error:\n", r)
 			// Since only called when command received, ensure we inform the caller there was an error
 			results <- DeviceResult{false, "", fmt.Errorf("Panic during execution")}
 		}

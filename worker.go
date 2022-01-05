@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// "github.com/ammesonb/dispersed-backup/device"
+var osOpen = os.Open
 
 // WorkRequest takes a workerID and will get another Job
 type WorkRequest struct {
@@ -165,7 +165,7 @@ var verify = func(job Job, ctx *WorkerContext) error {
 }
 
 var checksum = func(path string, ctx *WorkerContext) (string, error) {
-	f, err := os.Open(path)
+	f, err := osOpen(path)
 	if err != nil {
 		return "", err
 	}
@@ -181,6 +181,9 @@ var checksum = func(path string, ctx *WorkerContext) (string, error) {
 	var chunkSize int
 	if stats.Size() < (500 * 1024 * 1024 * 1024) {
 		chunkSize = int(stats.Size() / 16)
+		if chunkSize < 16 {
+			chunkSize = 16
+		}
 	} else {
 		chunkSize = 65536
 	}
