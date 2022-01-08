@@ -1,6 +1,7 @@
 package mydb
 
 import (
+	"os"
 	"testing"
 
 	"github.com/ammesonb/dispersed-backup/device"
@@ -16,14 +17,18 @@ func TestAddAndGetDevice(t *testing.T) {
 			DeviceSerial: serial,
 		}, nil
 	}
+
+	f, err := os.CreateTemp("", "test.db")
+	if err != nil {
+		panic(err)
+	}
+
 	defer func() {
 		makeDevice = realMake
+		DeleteDB(f.Name())
 	}()
 
-	DeleteDB("test.db")
-
-	db := OpenDB("test.db")
-	defer DeleteDB("test.db")
+	db := OpenDB(f.Name())
 
 	newDev, err := makeDevice(0, "/mnt/foo", "abc123")
 	if err != nil {

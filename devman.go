@@ -25,27 +25,27 @@ var DevCommandFreeSpace int = 3
 // DeviceCommand contains information needed to execute a command
 type DeviceCommand struct {
 	// Command integer, see variables above
-	command int
+	Command int
 	// Mountpoint and serial, for adding a new device
 	// Mountpoint may also be used to request storing a file on a specific mountpoint
-	mountPoint string
-	serial     string
+	MountPoint string
+	Serial     string
 	// Space to allocate or free
-	space int64
+	Space int64
 }
 
 // DeviceResult contains details about the executed action
 type DeviceResult struct {
-	success bool
-	message string
-	err     error
+	Success bool
+	Message string
+	Err     error
 }
 
 // DevCtx contains the necessary components for interacting with the device manager goroutine
 type DevCtx struct {
-	devCommands chan DeviceCommand
-	devResults  chan DeviceResult
-	devLock     *sync.Mutex
+	DevCommands chan DeviceCommand
+	DevResults  chan DeviceResult
+	DevLock     *sync.Mutex
 }
 
 // RunManager should be used in a goroutine, and is responsible for managing available device space for file backups
@@ -75,9 +75,9 @@ var handle = func(command DeviceCommand, devices *[]*device.Device, db *sql.DB, 
 		}
 	}()
 
-	switch command.command {
+	switch command.Command {
 	case DevCommandAddDevice:
-		if len(command.mountPoint) == 0 {
+		if len(command.MountPoint) == 0 {
 			results <- DeviceResult{false, "", fmt.Errorf("Mountpoint required")}
 			break
 		}
@@ -105,13 +105,13 @@ var handle = func(command DeviceCommand, devices *[]*device.Device, db *sql.DB, 
 		}
 
 	default:
-		results <- DeviceResult{false, "", fmt.Errorf("%d at path %s is not a recognized command", command.command, command.mountPoint)}
+		results <- DeviceResult{false, "", fmt.Errorf("%d at path %s is not a recognized command", command.Command, command.MountPoint)}
 	}
 }
 
 // addDevice wraps functionality to add a new device, returning the result
 var addDevice = func(command DeviceCommand, db *sql.DB) (device.Device, error) {
-	toAdd, err := makeDevice(0, command.mountPoint, command.serial)
+	toAdd, err := makeDevice(0, command.MountPoint, command.Serial)
 	if err != nil {
 		return device.Device{}, err
 	}
@@ -132,16 +132,16 @@ var reserveSpace = func(command DeviceCommand, devices *[]*device.Device) (strin
 
 	for _, dev := range *devices {
 		// If requested size is negative, then would be less than an int64 representation of remaining space anyways
-		if len(command.mountPoint) > 0 && command.mountPoint == dev.MountPoint {
-			if dev.RemainingSpace() > uint64(command.space) {
-				dev.ReserveSpace(command.space)
+		if len(command.MountPoint) > 0 && command.MountPoint == dev.MountPoint {
+			if dev.RemainingSpace() > uint64(command.Space) {
+				dev.ReserveSpace(command.Space)
 				return dev.MountPoint, nil
 			}
 
 			return "", fmt.Errorf("Insufficient space on requested device")
 			// Check device space
-		} else if len(command.mountPoint) == 0 && dev.RemainingSpace() > uint64(command.space) {
-			dev.ReserveSpace(command.space)
+		} else if len(command.MountPoint) == 0 && dev.RemainingSpace() > uint64(command.Space) {
+			dev.ReserveSpace(command.Space)
 			return dev.MountPoint, nil
 		}
 	}
@@ -150,14 +150,14 @@ var reserveSpace = func(command DeviceCommand, devices *[]*device.Device) (strin
 }
 
 var freeSpace = func(command DeviceCommand, devices *[]*device.Device) error {
-	if len(command.mountPoint) == 0 {
+	if len(command.MountPoint) == 0 {
 		return fmt.Errorf("Mountpoint required")
 	}
 
 	var selected *device.Device = &device.Device{}
 
 	for _, dev := range *devices {
-		if dev.MountPoint == command.mountPoint {
+		if dev.MountPoint == command.MountPoint {
 			selected = dev
 			break
 		}
@@ -166,6 +166,6 @@ var freeSpace = func(command DeviceCommand, devices *[]*device.Device) error {
 		return fmt.Errorf("No such mountpoint")
 	}
 
-	selected.ReserveSpace(-1 * command.space)
+	selected.ReserveSpace(-1 * command.Space)
 	return nil
 }

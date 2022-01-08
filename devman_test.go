@@ -12,7 +12,7 @@ import (
 )
 
 // Checks expected functions are called
-/*func TestRunManager(t *testing.T) {
+func TestRunManager(t *testing.T) {
 	realGet := getDevices
 	realHandle := handle
 
@@ -24,7 +24,7 @@ import (
 	}
 
 	// Can't use simple bool since this runs in separate goroutine
-	handle = func(_ *bool, _ DeviceCommand, _ *[]*device.Device, _ *sql.DB, _ <-chan DeviceCommand, result chan<- DeviceResult) {
+	handle = func(_ DeviceCommand, _ *[]*device.Device, _ *sql.DB, _ <-chan DeviceCommand, result chan<- DeviceResult) {
 		result <- DeviceResult{true, "Called", nil}
 	}
 
@@ -47,7 +47,7 @@ import (
 	select {
 	case msg := <-results:
 		fmt.Println("Result")
-		assert.Equal(t, "Called", msg.message, "Processing message received")
+		assert.Equal(t, "Called", msg.Message, "Processing message received")
 	case <-time.After(100 * time.Millisecond):
 		fmt.Println("timeout")
 		assert.Fail(t, "Processing message not received")
@@ -56,7 +56,7 @@ import (
 	fmt.Println("Closing")
 
 	close(commands)
-}*/
+}
 
 // Check process calls handle, and restarts it with state on panic
 func TestProcessRestartsAndPersists(t *testing.T) {
@@ -88,7 +88,7 @@ func TestProcessRestartsAndPersists(t *testing.T) {
 
 	// Ensure handle gets called three times
 	for n := 0; n < loops; n++ {
-		commands <- DeviceCommand{command: DevCommandReserveSpace}
+		commands <- DeviceCommand{Command: DevCommandReserveSpace}
 	}
 	close(commands)
 
@@ -100,8 +100,8 @@ func TestProcessRestartsAndPersists(t *testing.T) {
 	for n := 0; n < loops-1; n++ {
 		select {
 		case result := <-results:
-			assert.False(t, result.success, "Panic should cause failure")
-			assert.EqualErrorf(t, result.err, "Panic during execution", "Panic message sent")
+			assert.False(t, result.Success, "Panic should cause failure")
+			assert.EqualErrorf(t, result.Err, "Panic during execution", "Panic message sent")
 		case <-time.After(100 * time.Millisecond):
 			assert.Fail(t, "Expected result not sent")
 		}
@@ -109,8 +109,8 @@ func TestProcessRestartsAndPersists(t *testing.T) {
 
 	select {
 	case result := <-results:
-		assert.True(t, result.success, "Last attempt succeeded")
-		assert.Nil(t, result.err, "No error on last attempt")
+		assert.True(t, result.Success, "Last attempt succeeded")
+		assert.Nil(t, result.Err, "No error on last attempt")
 	case <-time.After(100 * time.Millisecond):
 		assert.Fail(t, "Expected result not sent")
 	}
@@ -142,11 +142,11 @@ func TestPanicSendsResult(t *testing.T) {
 		close(results)
 	}()
 
-	handle(DeviceCommand{command: DevCommandAddDevice, mountPoint: "wherever"}, &devices, &sql.DB{}, commands, results)
+	handle(DeviceCommand{Command: DevCommandAddDevice, MountPoint: "wherever"}, &devices, &sql.DB{}, commands, results)
 
 	result := <-results
-	assert.False(t, result.success, "Should fail on panic")
-	assert.EqualErrorf(t, result.err, "Panic during execution", "Panic has expected message")
+	assert.False(t, result.Success, "Should fail on panic")
+	assert.EqualErrorf(t, result.Err, "Panic during execution", "Panic has expected message")
 }
 
 // Check device is added only for non-errors, and persisted outside scope
@@ -173,31 +173,31 @@ func TestDeviceAdding(t *testing.T) {
 		close(results)
 	}()
 
-	commands <- DeviceCommand{command: DevCommandAddDevice}
+	commands <- DeviceCommand{Command: DevCommandAddDevice}
 	commands <- DeviceCommand{
-		command:    DevCommandAddDevice,
-		mountPoint: "/mnt/1",
+		Command:    DevCommandAddDevice,
+		MountPoint: "/mnt/1",
 	}
 	commands <- DeviceCommand{
-		command:    DevCommandAddDevice,
-		mountPoint: "/mnt/2",
+		Command:    DevCommandAddDevice,
+		MountPoint: "/mnt/2",
 	}
 	close(commands)
 
 	process(&devices, &sql.DB{}, commands, results)
 
 	result := <-results
-	assert.False(t, result.success, "Should fail device add without mount")
-	assert.Errorf(t, result.err, "Mountpoint required", "Mount required error returned")
+	assert.False(t, result.Success, "Should fail device add without mount")
+	assert.Errorf(t, result.Err, "Mountpoint required", "Mount required error returned")
 
 	result = <-results
-	assert.False(t, result.success, "Should fail device add with invalid mount")
-	assert.Errorf(t, result.err, "Invalid", "Device add failure returned")
+	assert.False(t, result.Success, "Should fail device add with invalid mount")
+	assert.Errorf(t, result.Err, "Invalid", "Device add failure returned")
 
 	result = <-results
-	assert.True(t, result.success, "Device adding succeeds")
-	assert.Equal(t, "Device added successfully", result.message, "Added message correct")
-	assert.Nil(t, result.err, "No errors if device added")
+	assert.True(t, result.Success, "Device adding succeeds")
+	assert.Equal(t, "Device added successfully", result.Message, "Added message correct")
+	assert.Nil(t, result.Err, "No errors if device added")
 	assert.Len(t, devices, 1, "Device was added to array")
 }
 
@@ -224,21 +224,21 @@ func TestReserving(t *testing.T) {
 		close(results)
 	}()
 
-	commands <- DeviceCommand{command: DevCommandReserveSpace}
-	commands <- DeviceCommand{command: DevCommandReserveSpace}
+	commands <- DeviceCommand{Command: DevCommandReserveSpace}
+	commands <- DeviceCommand{Command: DevCommandReserveSpace}
 	close(commands)
 
-	handle(DeviceCommand{command: DevCommandReserveSpace}, &devices, &sql.DB{}, commands, results)
+	handle(DeviceCommand{Command: DevCommandReserveSpace}, &devices, &sql.DB{}, commands, results)
 	result := <-results
-	assert.False(t, result.success, "Should fail reserve space")
-	assert.Errorf(t, result.err, "Invalid", "Error message returned")
-	assert.Equal(t, "", result.message, "No mount returned")
+	assert.False(t, result.Success, "Should fail reserve space")
+	assert.Errorf(t, result.Err, "Invalid", "Error message returned")
+	assert.Equal(t, "", result.Message, "No mount returned")
 
-	handle(DeviceCommand{command: DevCommandReserveSpace}, &devices, &sql.DB{}, commands, results)
+	handle(DeviceCommand{Command: DevCommandReserveSpace}, &devices, &sql.DB{}, commands, results)
 	result = <-results
-	assert.True(t, result.success, "Should succeed")
-	assert.Nil(t, result.err, "No error returned")
-	assert.Equal(t, "/mnt/1", result.message, "Mount path returned")
+	assert.True(t, result.Success, "Should succeed")
+	assert.Nil(t, result.Err, "No error returned")
+	assert.Equal(t, "/mnt/1", result.Message, "Mount path returned")
 }
 
 // Check device adding works as expected
@@ -265,19 +265,19 @@ func TestFreeing(t *testing.T) {
 		close(results)
 	}()
 
-	commands <- DeviceCommand{command: DevCommandFreeSpace}
-	commands <- DeviceCommand{command: DevCommandFreeSpace}
+	commands <- DeviceCommand{Command: DevCommandFreeSpace}
+	commands <- DeviceCommand{Command: DevCommandFreeSpace}
 	close(commands)
 
-	handle(DeviceCommand{command: DevCommandFreeSpace}, &devices, &sql.DB{}, commands, results)
+	handle(DeviceCommand{Command: DevCommandFreeSpace}, &devices, &sql.DB{}, commands, results)
 	result := <-results
-	assert.False(t, result.success, "Should fail free space")
-	assert.Errorf(t, result.err, "Invalid", "Error message returned")
+	assert.False(t, result.Success, "Should fail free space")
+	assert.Errorf(t, result.Err, "Invalid", "Error message returned")
 
-	handle(DeviceCommand{command: DevCommandFreeSpace}, &devices, &sql.DB{}, commands, results)
+	handle(DeviceCommand{Command: DevCommandFreeSpace}, &devices, &sql.DB{}, commands, results)
 	result = <-results
-	assert.True(t, result.success, "Should succeed")
-	assert.Nil(t, result.err, "No error returned")
+	assert.True(t, result.Success, "Should succeed")
+	assert.Nil(t, result.Err, "No error returned")
 }
 
 // Check device adding works as expected
@@ -294,7 +294,7 @@ func TestAddDevice(t *testing.T) {
 		addDBDevice = realAdd
 	}()
 
-	_, err := addDevice(DeviceCommand{mountPoint: "", serial: ""}, &sql.DB{})
+	_, err := addDevice(DeviceCommand{MountPoint: "", Serial: ""}, &sql.DB{})
 	assert.EqualErrorf(t, err, "No mount", "Device addition error correct")
 
 	makeDevice = func(devID int, mountPoint string, serial string) (device.Device, error) {
@@ -304,7 +304,7 @@ func TestAddDevice(t *testing.T) {
 		return device.Device{}, fmt.Errorf("Already exists")
 	}
 
-	_, err = addDevice(DeviceCommand{mountPoint: "", serial: ""}, &sql.DB{})
+	_, err = addDevice(DeviceCommand{MountPoint: "", Serial: ""}, &sql.DB{})
 	assert.EqualErrorf(t, err, "Already exists", "DB error correct")
 
 	addDBDevice = func(_ *sql.DB, dev device.Device) (device.Device, error) {
@@ -312,7 +312,7 @@ func TestAddDevice(t *testing.T) {
 		return dev, nil
 	}
 
-	newDev, err := addDevice(DeviceCommand{mountPoint: "", serial: ""}, &sql.DB{})
+	newDev, err := addDevice(DeviceCommand{MountPoint: "", Serial: ""}, &sql.DB{})
 	assert.Nil(t, err, "No error when adding")
 	assert.Equal(t, 5, newDev.DeviceID, "Device ID set")
 }
@@ -326,29 +326,29 @@ func TestReserveSpace(t *testing.T) {
 	devices = append(devices, &device.Device{DeviceID: 1, MountPoint: "/mnt/1", DeviceSerial: "ABC123", AvailableSpace: 100, AllocatedSpace: 100})
 	devices = append(devices, &device.Device{DeviceID: 2, MountPoint: "/mnt/2", DeviceSerial: "ABC223", AvailableSpace: 200, AllocatedSpace: 100})
 	devices = append(devices, &device.Device{DeviceID: 3, MountPoint: "/mnt/3", DeviceSerial: "ABC223", AvailableSpace: 200, AllocatedSpace: 50})
-	mount, err = reserveSpace(DeviceCommand{mountPoint: "/mnt/1"}, &devices)
+	mount, err = reserveSpace(DeviceCommand{MountPoint: "/mnt/1"}, &devices)
 	assert.Equal(t, mount, "", "Mount is empty")
 	assert.EqualErrorf(t, err, "Insufficient space on requested device", "Expected insufficient space")
 
-	mount, err = reserveSpace(DeviceCommand{space: 200}, &devices)
+	mount, err = reserveSpace(DeviceCommand{Space: 200}, &devices)
 	assert.Equal(t, mount, "", "Mount is empty")
 	assert.EqualErrorf(t, err, "No device with sufficient space -- add another or make space", "Expected no device with space")
 
-	mount, err = reserveSpace(DeviceCommand{mountPoint: "/mnt/3", space: 25}, &devices)
+	mount, err = reserveSpace(DeviceCommand{MountPoint: "/mnt/3", Space: 25}, &devices)
 	assert.Nil(t, err, "No error requesting allocatable space")
 	assert.Equal(t, mount, "/mnt/3", "Requested mount returned")
 	assert.Equal(t, uint64(125), devices[2].RemainingSpace(), "25 bytes was reserved")
 
-	mount, err = reserveSpace(DeviceCommand{space: 50}, &devices)
+	mount, err = reserveSpace(DeviceCommand{Space: 50}, &devices)
 	assert.Nil(t, err, "No error requesting allocatable space")
 	assert.Equal(t, mount, "/mnt/2", "Mount returned")
 	assert.Equal(t, uint64(150), devices[1].AllocatedSpace, "50 bytes was reserved")
 
-	mount, err = reserveSpace(DeviceCommand{space: 125}, &devices)
+	mount, err = reserveSpace(DeviceCommand{Space: 125}, &devices)
 	assert.Equal(t, mount, "", "No mount returned")
 	assert.Errorf(t, err, "No device with sufficient space -- add another or make space", "Cannot fully max out a drive")
 
-	mount, err = reserveSpace(DeviceCommand{space: 75}, &devices)
+	mount, err = reserveSpace(DeviceCommand{Space: 75}, &devices)
 	assert.Nil(t, err, "No error requesting allocatable space")
 	assert.Equal(t, mount, "/mnt/3", "Third mount returned")
 	assert.Equal(t, uint64(150), devices[2].AllocatedSpace, "75 bytes was reserved")
@@ -363,14 +363,14 @@ func TestFreeSpace(t *testing.T) {
 	err := freeSpace(DeviceCommand{}, &devices)
 	assert.EqualErrorf(t, err, "Mountpoint required", "Requires mountpoint error returned")
 
-	err = freeSpace(DeviceCommand{mountPoint: "/mnt2"}, &devices)
+	err = freeSpace(DeviceCommand{MountPoint: "/mnt2"}, &devices)
 	assert.EqualErrorf(t, err, "No such mountpoint", "Mountpoint not found error returned")
 
 	devices = append(devices, &device.Device{DeviceID: 1, MountPoint: "/mnt/1", DeviceSerial: "ABC123", AvailableSpace: 100, AllocatedSpace: 100})
 	devices = append(devices, &device.Device{DeviceID: 2, MountPoint: "/mnt/2", DeviceSerial: "ABC223", AvailableSpace: 200, AllocatedSpace: 100})
 	devices = append(devices, &device.Device{DeviceID: 3, MountPoint: "/mnt/3", DeviceSerial: "ABC223", AvailableSpace: 200, AllocatedSpace: 50})
 
-	err = freeSpace(DeviceCommand{mountPoint: "/mnt/2", space: 50}, &devices)
+	err = freeSpace(DeviceCommand{MountPoint: "/mnt/2", Space: 50}, &devices)
 	assert.Nil(t, err, "No error decreasing space")
 
 	assert.Equal(t, uint64(0), devices[0].RemainingSpace(), "No space remaining on device 1")

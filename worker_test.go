@@ -33,13 +33,13 @@ func TestChecksumFailsLoad(t *testing.T) {
 
 	progress := make(chan WorkProgress, 10)
 	ctx := WorkerContext{
-		progress: progress,
+		Progress: progress,
 	}
 	sum, err = checksum(f.Name(), &ctx)
 	assert.Nil(t, err, "No error checksumming file")
 	assert.Equal(t, "c74579aeba50c05bc0cd36bce93919343ebfc1ddf74ae96417e7aba274351c5e", sum, "Correct checksum returned")
 
 	msg := <-progress
-	assert.Equal(t, "Calculating hash", msg.status, "Checksum status correct")
+	assert.Equal(t, "Calculating hash", msg.Status, "Checksum status correct")
 	close(progress)
 }

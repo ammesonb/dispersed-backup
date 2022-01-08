@@ -4,4 +4,4 @@ if [ -z "${1}" ]; then
   exit 1
 fi
 
-migrate create -ext sql -dir mydb/migrations "${1}"
+migrate create -ext sql -dir ../mydb/migrations "${1}"

@@ -39,19 +39,15 @@ func main() {
 		workerChannels[i] = jobChan
 
 		StartWorker(&WorkerContext{
-			db:              db,
-			workerID:        i,
-			interrupted:     &interrupt,
-			hardInterrupted: &hardInterrupt,
-			DevCtx: DevCtx{
-				devLock:     devCtx.devLock,
-				devCommands: devCtx.devCommands,
-				devResults:  devCtx.devResults,
-			},
-			requests: workRequests,
-			jobs:     jobChan,
-			progress: workProgress,
-			complete: workComplete,
+			DB:              db,
+			WorkerID:        i,
+			Interrupted:     &interrupt,
+			HardInterrupted: &hardInterrupt,
+			DevCtx:          devCtx,
+			Requests:        workRequests,
+			Jobs:            jobChan,
+			Progress:        workProgress,
+			Complete:        workComplete,
 		})
 
 	}

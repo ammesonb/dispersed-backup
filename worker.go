@@ -15,57 +15,56 @@ var osOpen = os.Open
 
 // WorkRequest takes a workerID and will get another Job
 type WorkRequest struct {
-	workerID int
+	WorkerID int
 }
 
 // Job will either be a backup request or system command, such as "Exit"
 // This channel is unique to each worker, to ensure system commands are received by all
 type Job struct {
 	// Which WorkerCommand to execute
-	command int
+	Command int
 	// File path in question
-	path string
+	Path string
 	// Specify a device, if applicable
 	// e.g. for backing up to a specific place, or moving from one device to another
 	_ string
 }
 
 // WorkProgress reports command progress - primarily for backups and restorations
-// TODO: can checksums report read/calculation progress?
 type WorkProgress struct {
 	// Which path is in progress
-	path string
+	Path string
 	// What is currently happening - e.g. checksum, copying, etc
-	status string
+	Status string
 	// Size completed
-	completed int64
+	Completed int64
 	// total size
-	total int64
+	Total int64
 }
 
 // WorkComplete reports job completion
 type WorkComplete struct {
 	// The path that is completed
-	path string
+	Path string
 	// Whether it was successful
-	succeeded bool
+	Succeeded bool
 }
 
 // WorkerContext contains needed operational data to process commands
 type WorkerContext struct {
 	DevCtx
-	db *sql.DB
+	DB *sql.DB
 
-	workerID int
+	WorkerID int
 	// If interrupted, stop after the command completes
-	interrupted *bool
+	Interrupted *bool
 	// On hard interrupt, rollback any changes made so far and exit
-	hardInterrupted *bool
+	HardInterrupted *bool
 
-	requests chan<- WorkRequest
-	jobs     <-chan Job
-	progress chan<- WorkProgress
-	complete chan<- WorkComplete
+	Requests chan<- WorkRequest
+	Jobs     <-chan Job
+	Progress chan<- WorkProgress
+	Complete chan<- WorkComplete
 }
 
 // WorkerCommandBackup backs up a provided path
@@ -102,7 +101,7 @@ var listen = func(ctx *WorkerContext, processing *bool) {
 
 	for {
 		select {
-		case job := <-ctx.jobs:
+		case job := <-ctx.Jobs:
 			runJob(job, ctx, processing)
 		case <-time.After(100 * time.Millisecond):
 			break
@@ -121,11 +120,11 @@ var runJob = func(job Job, ctx *WorkerContext, processing *bool) {
 			}
 		}
 
-		ctx.requests <- WorkRequest{ctx.workerID}
+		ctx.Requests <- WorkRequest{ctx.WorkerID}
 	}()
 
 	*processing = true
-	switch job.command {
+	switch job.Command {
 	// TODO: other commands
 	case WorkerCommandBackup:
 		break
@@ -135,9 +134,9 @@ var runJob = func(job Job, ctx *WorkerContext, processing *bool) {
 		break
 	case WorkerCommandVerify:
 		err := verify(job, ctx)
-		ctx.complete <- WorkComplete{
-			path:      job.path,
-			succeeded: err == nil,
+		ctx.Complete <- WorkComplete{
+			job.Path,
+			err == nil,
 		}
 	case WorkerCommandConfirm:
 		break
@@ -151,7 +150,7 @@ var runJob = func(job Job, ctx *WorkerContext, processing *bool) {
 }
 
 var verify = func(job Job, ctx *WorkerContext) error {
-	sum, err := checksum(job.path, ctx)
+	sum, err := checksum(job.Path, ctx)
 	if err != nil {
 		return err
 	}
@@ -194,7 +193,7 @@ var checksum = func(path string, ctx *WorkerContext) (string, error) {
 	var i int64
 	for i = 0; i < stats.Size(); i += int64(chunkSize) {
 		data, err := reader.Peek(chunkSize)
-		ctx.progress <- WorkProgress{path, "Calculating hash", i, stats.Size()}
+		ctx.Progress <- WorkProgress{path, "Calculating hash", i, stats.Size()}
 		if err != nil && err != io.EOF {
 			return "", err
 		}
@@ -213,7 +212,7 @@ var checksum = func(path string, ctx *WorkerContext) (string, error) {
 
 var rollBack = func(job Job, ctx *WorkerContext) {
 	// For checksum verifications, no need to do anything since nothing will have been changed
-	if (job.command == WorkerCommandVerify) || (job.command == WorkerCommandConfirm) {
+	if (job.Command == WorkerCommandVerify) || (job.Command == WorkerCommandConfirm) {
 		return
 	}
 }
