@@ -14,13 +14,13 @@ var makeDevice = device.MakeDevice
 var addDBDevice = mydb.AddDevice
 
 // DevCommandAddDevice instructs the manager to add a new device by mount
-var DevCommandAddDevice int = 1
+const DevCommandAddDevice int = 1
 
 // DevCommandReserveSpace instructs the manager to reserve an amount of space, optionally on a specific mount
-var DevCommandReserveSpace int = 2
+const DevCommandReserveSpace int = 2
 
 // DevCommandFreeSpace instructs the manager to free an amount of space on a given mount
-var DevCommandFreeSpace int = 3
+const DevCommandFreeSpace int = 3
 
 // DeviceCommand contains information needed to execute a command
 type DeviceCommand struct {
