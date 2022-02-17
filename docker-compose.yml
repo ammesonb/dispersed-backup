@@ -1,0 +1,70 @@
+dev: &dev
+  image: dispersed-backup_dev
+  volumes:
+    - "./:/go/src/github.com/ammesonb/dispersed-backup"
+  environment:
+    - GOPATH=/go/
+  working_dir: /go/src/github.com/ammesonb/dispersed-backup
+
+
+ci: &ci
+  image: dispersed-backup_dev
+  # This will overwrite the dev volumes, so include both
+  # NOTE: for docker-in-docker, this references the HOST file system, not the bk agent
+  # so /buildkite/builds ($BUILDKITE_BUILD_PATH) is synced from host -> agent, so it can
+  # be available for the pipeline builds
+  volumes:
+      - "${BUILDKITE_BUILD_CHECKOUT_PATH}:/go/src/github.com/ammesonb/dispersed-backup"
+      - "/usr/bin/buildkite-agent:/usr/bin/buildkite-agent"
+  environment:
+    - BUILDKITE_AGENT_ACCESS_TOKEN
+    - BUILDKITE_JOB_ID
+    - BUILDKITE_BUILD_ID
+    - BUILDKITE_BUILD_NUMBER
+    - GOPATH=/go/
+  working_dir: /go/src/github.com/ammesonb/dispersed-backup
+
+
+lint: &lint
+  <<: *dev
+  command: ["./scripts/entry.sh", "lint"]
+
+lint-ci: &lint-ci
+  <<: *lint
+  <<: *ci
+
+imports:
+  <<: *lint-ci
+  command: ["./scripts/entry.sh", "imports"]
+
+format:
+  <<: *lint-ci
+  command: ["./scripts/entry.sh", "format"]
+
+vet:
+  <<: *lint-ci
+  command: ["./scripts/entry.sh", "vet"]
+
+ci-lint:
+  <<: *lint-ci
+  command: ["./scripts/entry.sh", "ci-lint"]
+
+critic:
+  <<: *lint-ci
+  command: ["./scripts/entry.sh", "critic"]
+
+cycles:
+  <<: *lint-ci
+  command: ["./scripts/entry.sh", "cycles"]
+
+test: &test
+  <<: *dev
+  command: ["./scripts/entry.sh", "test"]
+
+test-ci:
+  <<: *test
+  <<: *ci
+
+build: &build
+  <<: *dev
+  command: ["go", "build"]

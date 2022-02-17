@@ -1,6 +1,7 @@
 - Logs as modal, filterable by level, timestamps etc
     - By worker, if possible
-- UI has completed, in progress, pending sections (with pretty animated icons)
+- UI in 3 tabs/notebooks - Queue, Local, and Backup
+- Queue UI has completed, in progress, pending sections (with pretty animated icons)
 - Completed section can be cleared
 - Multi-select option? for actions
 - Rearrange using grab bar, maybe support touch actions?
@@ -9,6 +10,7 @@
 - Report progress natively, showing via filling a bar in the "In Progress" section
     - How to do, if disk operations are shifted to separate processes?
     - Local UDP socket, per-worker?
+    - dd progress status?
 - Dedicated channels for logging, device availability, etc
     - Buffered to 100 or something large, to avoid issues with changes in thread/worker counts
 - How to update disk availability after each write (check availability only decreased by file size, not file size + 4k for block alignment etc)?
