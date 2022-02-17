@@ -68,25 +68,25 @@ type WorkerContext struct {
 }
 
 // WorkerCommandBackup backs up a provided path
-var WorkerCommandBackup int = 1
+const WorkerCommandBackup int = 1
 
 // WorkerCommandRestore restores a provided path
-var WorkerCommandRestore int = 2
+const WorkerCommandRestore int = 2
 
 // WorkerCommandRemove removes a provided path from the backup
-var WorkerCommandRemove int = 3
+const WorkerCommandRemove int = 3
 
 // WorkerCommandVerify verifies a file on the local FS has valid checksum
-var WorkerCommandVerify int = 4
+const WorkerCommandVerify int = 4
 
 // WorkerCommandConfirm confirms a file on the backup has valid checksum
-var WorkerCommandConfirm int = 5
+const WorkerCommandConfirm int = 5
 
 // WorkerCommandMove moves a file from one backup device to another
-var WorkerCommandMove int = 6
+const WorkerCommandMove int = 6
 
 // WorkerCommandUpdate checks a path for changes and backs up new files
-var WorkerCommandUpdate int = 7
+const WorkerCommandUpdate int = 7
 
 // StartWorker kicks off a new worker
 func StartWorker(ctx *WorkerContext) {
